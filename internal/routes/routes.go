@@ -18,4 +18,7 @@ func InitRoutes(r *gin.Engine) {
 
 	// 搜索路由
 	registerSearchRoutes(r)
+
+	// 管理端路由
+	registerAdminHerbRoutes(r)
 }

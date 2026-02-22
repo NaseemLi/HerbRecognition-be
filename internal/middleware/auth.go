@@ -72,7 +72,8 @@ func RequireRole(requiredRole string) gin.HandlerFunc {
 			return
 		}
 
-		if role != requiredRole && requiredRole != "user" {
+		// admin 可以访问所有接口，user 只能访问用户接口
+		if role == "user" && requiredRole == "admin" {
 			response.Error(c, http.StatusForbidden, "权限不足", nil)
 			c.Abort()
 			return
