@@ -31,6 +31,12 @@ type LoginResponse struct {
 	User  *model.User `json:"user"`
 }
 
+// ChangePasswordRequest 修改密码请求
+type ChangePasswordRequest struct {
+	OldPassword string `json:"old_password" binding:"required"`
+	NewPassword string `json:"new_password" binding:"required,min=6"`
+}
+
 // jwtSecret JWT 密钥
 var jwtSecret = []byte("herb-recognition-secret-key")
 
@@ -94,4 +100,27 @@ func generateToken(userID uint, username, role string) (string, error) {
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	return token.SignedString(jwtSecret)
+}
+
+// ChangePassword 修改密码
+func (s *AuthService) ChangePassword(userID uint, req *ChangePasswordRequest) error {
+	// 查找用户
+	var user model.User
+	if err := repository.DB.First(&user, userID).Error; err != nil {
+		return errors.New("用户不存在")
+	}
+
+	// 验证旧密码
+	if err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(req.OldPassword)); err != nil {
+		return errors.New("原密码错误")
+	}
+
+	// 加密新密码
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(req.NewPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return errors.New("密码加密失败")
+	}
+
+	// 更新密码
+	return repository.DB.Model(&user).Update("password", string(hashedPassword)).Error
 }

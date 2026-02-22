@@ -1,6 +1,7 @@
 package app
 
 import (
+	"herb-recognition-be/internal/middleware"
 	"herb-recognition-be/internal/service"
 	"herb-recognition-be/pkg/response"
 
@@ -50,4 +51,26 @@ func (h *AuthHandler) Login(c *gin.Context) {
 	}
 
 	response.Success(c, "登录成功", loginResp)
+}
+
+// ChangePassword 修改密码
+func (h *AuthHandler) ChangePassword(c *gin.Context) {
+	userID, exists := middleware.GetUserIDFromContext(c)
+	if !exists {
+		response.Error(c, 401, "未登录", nil)
+		return
+	}
+
+	var req service.ChangePasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 400, "请求参数错误", nil)
+		return
+	}
+
+	if err := h.authService.ChangePassword(userID, &req); err != nil {
+		response.Error(c, 400, err.Error(), nil)
+		return
+	}
+
+	response.Success(c, "密码修改成功", nil)
 }
