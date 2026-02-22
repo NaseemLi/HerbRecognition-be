@@ -240,3 +240,56 @@ func (s *AdminHerbService) GetHerbList(query *HerbListQuery) ([]model.Herb, int6
 
 	return herbs, total, nil
 }
+
+// UserListQuery 用户列表查询参数
+type UserListQuery struct {
+	Page     int    `form:"page,default=1"`
+	PageSize int    `form:"page_size,default=10"`
+	Role     string `form:"role"` // 按角色筛选
+}
+
+// GetUserList 获取用户列表（分页）
+func (s *AdminHerbService) GetUserList(query *UserListQuery) ([]model.User, int64, error) {
+	if query.Page < 1 {
+		query.Page = 1
+	}
+	if query.PageSize < 1 || query.PageSize > 50 {
+		query.PageSize = 10
+	}
+
+	offset := (query.Page - 1) * query.PageSize
+	var users []model.User
+	var total int64
+
+	db := repository.DB.Model(&model.User{})
+	if query.Role != "" {
+		db = db.Where("role = ?", query.Role)
+	}
+
+	if err := db.Count(&total).Error; err != nil {
+		return nil, 0, errors.New("查询失败")
+	}
+
+	if err := db.Order("id DESC").Offset(offset).Limit(query.PageSize).Find(&users).Error; err != nil {
+		return nil, 0, errors.New("查询失败")
+	}
+
+	return users, total, nil
+}
+
+// UpdateUserRoleRequest 更新用户角色请求
+type UpdateUserRoleRequest struct {
+	UserID uint   `json:"user_id" binding:"required"`
+	Role   string `json:"role" binding:"required,oneof=user admin"`
+}
+
+// UpdateUserRole 更新用户角色
+func (s *AdminHerbService) UpdateUserRole(req *UpdateUserRoleRequest) error {
+	var user model.User
+	if err := repository.DB.First(&user, req.UserID).Error; err != nil {
+		return errors.New("用户不存在")
+	}
+
+	user.Role = req.Role
+	return repository.DB.Save(&user).Error
+}
