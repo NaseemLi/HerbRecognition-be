@@ -15,4 +15,7 @@ func InitRoutes(r *gin.Engine) {
 
 	// 识别路由
 	registerRecognizeRoutes(r)
+
+	// 搜索路由
+	registerSearchRoutes(r)
 }
