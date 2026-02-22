@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"herb-recognition-be/internal/config"
 	"herb-recognition-be/internal/model"
+	"herb-recognition-be/pkg/logger"
 
 	"gorm.io/driver/mysql"
 	"gorm.io/gorm"
@@ -27,9 +28,9 @@ func InitDB() error {
 	// 自动迁移表结构（根据 model 创建/更新表）
 	err = DB.AutoMigrate(&model.User{}, &model.Herb{}, &model.RecognitionRecord{})
 	if err != nil {
-		return fmt.Errorf("数据库自动迁移失败: %w", err)
+		return fmt.Errorf("数据库自动迁移失败：%w", err)
 	}
 
-	fmt.Println("数据库连接成功并已完成迁移!")
+	logger.Info("数据库连接成功并已完成迁移")
 	return nil
 }

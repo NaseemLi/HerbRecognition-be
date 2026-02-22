@@ -23,16 +23,16 @@ func Init(level string) error {
 		logLevel = zapcore.ErrorLevel
 	}
 
-	// 编码器配置
+	// 编码器配置（文本格式）
 	encoderConfig := zapcore.EncoderConfig{
-		TimeKey:        "time",
-		LevelKey:       "level",
-		NameKey:        "logger",
-		CallerKey:      "caller",
-		MessageKey:     "msg",
-		StacktraceKey:  "stacktrace",
+		TimeKey:        "T",
+		LevelKey:       "L",
+		NameKey:        "N",
+		CallerKey:      "C",
+		MessageKey:     "M",
+		StacktraceKey:  "S",
 		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.LowercaseLevelEncoder,
+		EncodeLevel:    zapcore.CapitalColorLevelEncoder,
 		EncodeTime:     timeEncoder,
 		EncodeDuration: zapcore.SecondsDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
@@ -40,8 +40,8 @@ func Init(level string) error {
 
 	// 核心配置
 	core := zapcore.NewCore(
-		zapcore.NewJSONEncoder(encoderConfig),
-		zapcore.NewMultiWriteSyncer(zapcore.AddSync(os.Stdout)),
+		zapcore.NewConsoleEncoder(encoderConfig),
+		zapcore.AddSync(os.Stdout),
 		logLevel,
 	)
 
@@ -73,6 +73,10 @@ func Warn(args ...interface{}) {
 	Log.Warn(args...)
 }
 
+func Fatal(args ...interface{}) {
+	Log.Fatal(args...)
+}
+
 // 带字段的日志
 func Infof(template string, args ...interface{}) {
 	Log.Infof(template, args...)
@@ -80,4 +84,8 @@ func Infof(template string, args ...interface{}) {
 
 func Errorf(template string, args ...interface{}) {
 	Log.Errorf(template, args...)
+}
+
+func Fatalf(template string, args ...interface{}) {
+	Log.Fatalf(template, args...)
 }
