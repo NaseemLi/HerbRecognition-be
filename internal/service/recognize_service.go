@@ -10,11 +10,28 @@ import (
 	"path/filepath"
 	"strings"
 
+	"herb-recognition-be/internal/client"
 	"herb-recognition-be/internal/model"
 	"herb-recognition-be/internal/repository"
 
 	"github.com/google/uuid"
 )
+
+var pythonServiceClient *client.PythonServiceClient
+
+// 模型默认路径 (相对路径：项目根目录/models/best_herb_model.pth)
+const DefaultModelPath = "./models/best_herb_model.pth"
+
+// 初始化 Python 服务客户端
+// 环境变量 PYTHON_SERVICE_URL 优先级高于默认值
+// 服务位于：services/inference-service/
+func init() {
+	pythonServiceURL := os.Getenv("PYTHON_SERVICE_URL")
+	if pythonServiceURL == "" {
+		pythonServiceURL = "http://localhost:5001"
+	}
+	pythonServiceClient = client.NewPythonServiceClient(pythonServiceURL)
+}
 
 // RecognizeService 识别服务
 type RecognizeService struct{}
@@ -118,40 +135,52 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 	record := model.RecognitionRecord{
 		UserID:   userID,
 		ImageURL: imageURL,
-		Status:   1, // 默认成功
+		Status:   1,
 	}
 
-	// TODO: 调用 AI 模型进行识别
-	// 这里先模拟返回结果
-	var mockHerb model.Herb
-	if err := repository.DB.Limit(1).Find(&mockHerb).Error; err != nil || mockHerb.ID == 0 {
-		// 识别失败：知识库为空
+	filePath := "." + imageURL
+	imageBytes, err := os.ReadFile(filePath)
+	if err != nil {
 		record.Status = 0
-		record.ErrMsg = "知识库为空，无法识别"
+		record.ErrMsg = "读取图片失败"
 		record.HerbName = "未知"
 		record.Confidence = 0
-	} else {
-		// 识别成功
-		record.HerbID = &mockHerb.ID
-		record.HerbName = mockHerb.Name
-		record.Confidence = 85.0 // 模拟置信度
+
+		if err := repository.DB.Create(&record).Error; err != nil {
+			return nil, fmt.Errorf("保存识别记录失败：%v", err)
+		}
+		return nil, errors.New("读取图片失败")
 	}
 
-	// 保存记录（无论成功失败）
+	filename := filepath.Base(imageURL)
+	result, err := pythonServiceClient.RecognizeImage(imageBytes, filename)
+
+	if err != nil {
+		record.Status = 0
+		record.ErrMsg = fmt.Sprintf("识别失败：%v", err)
+		record.HerbName = "未知"
+		record.Confidence = 0
+
+		if err := repository.DB.Create(&record).Error; err != nil {
+			return nil, fmt.Errorf("保存识别记录失败：%v", err)
+		}
+		return nil, errors.New(record.ErrMsg)
+	}
+
+	herbID := uint(result.HerbID)
+	record.HerbID = &herbID
+	record.HerbName = result.HerbName
+	record.Confidence = float32(result.Confidence)
+
 	if err := repository.DB.Create(&record).Error; err != nil {
 		return nil, fmt.Errorf("保存识别记录失败：%v", err)
 	}
 
-	// 如果识别失败，返回错误但记录已保存
-	if record.Status == 0 {
-		return nil, errors.New(record.ErrMsg)
-	}
-
 	return &RecognizeResponse{
 		RecordID:   record.ID,
-		HerbID:     mockHerb.ID,
-		HerbName:   mockHerb.Name,
-		Confidence: record.Confidence,
+		HerbID:     herbID,
+		HerbName:   result.HerbName,
+		Confidence: float32(result.Confidence),
 		ImageURL:   imageURL,
 	}, nil
 }

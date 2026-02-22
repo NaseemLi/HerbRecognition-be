@@ -69,3 +69,16 @@ storage/
 
 uploads/
 uploads/images/
+
+# Python inference service
+services/inference-service/__pycache__/
+services/inference-service/*.pyc
+services/inference-service/venv/
+services/inference-service/env/
+
+# Model files (IMPORTANT: prevent large model uploads)
+models/*.pth
+models/*.pt
+models/*.onnx
+models/*.pb
+!models/.gitkeep

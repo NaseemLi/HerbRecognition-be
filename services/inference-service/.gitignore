@@ -1,0 +1,70 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.env
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Model files (IMPORTANT: prevent large model uploads)
+*.pth
+*.pt
+*.onnx
+*.pb
+*.h5
+*.ckpt
+models/
+!models/.gitkeep
+
+# Test files
+test_*.jpg
+test_*.png
+*.test.jpg
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Jupyter
+.ipynb_checkpoints
+
+# Flask
+instance/
+.webassets-cache
