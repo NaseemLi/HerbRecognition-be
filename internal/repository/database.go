@@ -30,6 +30,6 @@ func InitDB() error {
 		return fmt.Errorf("数据库自动迁移失败: %w", err)
 	}
 
-	fmt.Println("数据库连接成功并已完成迁移")
+	fmt.Println("数据库连接成功并已完成迁移!")
 	return nil
 }

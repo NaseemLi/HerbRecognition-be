@@ -115,25 +115,36 @@ type RecognizeResponse struct {
 
 // Recognize 识别图片（调用模型并保存记录）
 func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeResponse, error) {
+	record := model.RecognitionRecord{
+		UserID:   userID,
+		ImageURL: imageURL,
+		Status:   1, // 默认成功
+	}
+
 	// TODO: 调用 AI 模型进行识别
 	// 这里先模拟返回结果
-	mockHerb := model.Herb{}
-	if err := repository.DB.First(&mockHerb).Error; err != nil {
-		// 如果没有数据，使用默认值
-		mockHerb.Name = "未知药材"
+	var mockHerb model.Herb
+	if err := repository.DB.Limit(1).Find(&mockHerb).Error; err != nil || mockHerb.ID == 0 {
+		// 识别失败：知识库为空
+		record.Status = 0
+		record.ErrMsg = "知识库为空，无法识别"
+		record.HerbName = "未知"
+		record.Confidence = 0
+	} else {
+		// 识别成功
+		record.HerbID = &mockHerb.ID
+		record.HerbName = mockHerb.Name
+		record.Confidence = 85.0 // 模拟置信度
 	}
 
-	// 创建识别记录
-	record := model.RecognitionRecord{
-		UserID:     userID,
-		ImageURL:   imageURL,
-		HerbID:     &mockHerb.ID,
-		HerbName:   mockHerb.Name,
-		Confidence: 85.0, // 模拟置信度
-	}
-
+	// 保存记录（无论成功失败）
 	if err := repository.DB.Create(&record).Error; err != nil {
-		return nil, errors.New("保存识别记录失败")
+		return nil, fmt.Errorf("保存识别记录失败：%v", err)
+	}
+
+	// 如果识别失败，返回错误但记录已保存
+	if record.Status == 0 {
+		return nil, errors.New(record.ErrMsg)
 	}
 
 	return &RecognizeResponse{
