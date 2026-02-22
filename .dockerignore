@@ -1,0 +1,78 @@
+# Git
+.git
+.gitignore
+.gitattributes
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# Build outputs
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+*.pdb
+
+# Go
+vendor/
+*.test
+*.out
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+*.egg-info/
+.eggs/
+
+# Docker
+Dockerfile
+Dockerfile.python
+docker-compose.yml
+.dockerignore
+
+# Models - include .pth files for Docker build
+# models/*.pth
+# models/*.pt
+# models/*.h5
+# models/*.onnx
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Uploads
+uploads/
+
+# Configs with secrets
+configs/*.local.yml
+configs/*.local.yaml
+.env
+.env.local
+.env.*.local
+
+# Test coverage
+coverage/
+coverage.txt
+*.cover
+
+# Temporary files
+tmp/
+temp/
+*.tmp
