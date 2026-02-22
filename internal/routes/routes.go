@@ -12,4 +12,7 @@ func InitRoutes(r *gin.Engine) {
 
 	// 认证路由
 	registerAuthRoutes(r)
+
+	// 识别路由
+	registerRecognizeRoutes(r)
 }

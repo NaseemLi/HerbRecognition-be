@@ -6,25 +6,21 @@ import (
 	"gorm.io/gorm"
 )
 
-// Herb 中草药表
+// Herb 药材知识库表
 type Herb struct {
-	ID         uint           `gorm:"primaryKey" json:"id"`
-	Name       string         `gorm:"size:100;not null" json:"name"`
-	Scientific string         `gorm:"size:200" json:"scientific"`
-	Category   string         `gorm:"size:50" json:"category"`
-	Effect     string         `gorm:"type:text" json:"effect"`
-	CreatedAt  time.Time      `json:"created_at"`
-	UpdatedAt  time.Time      `json:"updated_at"`
-	DeletedAt  gorm.DeletedAt `gorm:"index" json:"-"`
+	ID          uint           `gorm:"primarykey" json:"id"`
+	Name        string         `gorm:"size:64;not null;uniqueIndex" json:"name"`
+	Alias       string         `gorm:"size:255" json:"alias"`
+	Description string         `gorm:"type:text" json:"description"`
+	Effects     string         `gorm:"type:text" json:"effects"`
+	Usage       string         `gorm:"type:text" json:"usage"`
+	ImageURL    string         `gorm:"size:255" json:"image_url"`
+	CreatedAt   time.Time      `json:"created_at"`
+	UpdatedAt   time.Time      `json:"updated_at"`
+	DeletedAt   gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
-// RecognitionRecord 识别记录表
-type RecognitionRecord struct {
-	ID         uint      `gorm:"primaryKey" json:"id"`
-	ImagePath  string    `gorm:"size:500;not null" json:"image_path"`
-	HerbID     uint      `gorm:"not null" json:"herb_id"`
-	Confidence float32   `gorm:"type:decimal(5,4)" json:"confidence"`
-	CreatedAt  time.Time `json:"created_at"`
-
-	Herb Herb `gorm:"foreignKey:HerbID" json:"herb_detail"`
+// TableName 指定表名
+func (Herb) TableName() string {
+	return "herbs"
 }
