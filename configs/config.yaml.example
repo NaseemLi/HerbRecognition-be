@@ -1,0 +1,16 @@
+server:
+  port: 8080
+  mode: debug
+
+database:
+  host: 127.0.0.1
+  port: 3306
+  user: root
+  password: YOUR_PASSWORD_HERE  # ← 占位符
+  dbname: herb_db
+  charset: utf8mb4
+  parseTime: true
+  loc: Local
+
+model_service:
+  url: "http://127.0.0.1:5000"
