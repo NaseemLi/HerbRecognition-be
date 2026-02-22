@@ -25,7 +25,7 @@ func InitDB() error {
 	}
 
 	// 自动迁移表结构（根据 model 创建/更新表）
-	err = DB.AutoMigrate(&model.Herb{}, &model.RecognitionRecord{})
+	err = DB.AutoMigrate(&model.User{}, &model.Herb{}, &model.RecognitionRecord{})
 	if err != nil {
 		return fmt.Errorf("数据库自动迁移失败: %w", err)
 	}

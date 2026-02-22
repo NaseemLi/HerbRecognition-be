@@ -5,9 +5,9 @@ import (
 	"log"
 
 	"herb-recognition-be/internal/config"
-	"herb-recognition-be/internal/handler"
 	"herb-recognition-be/internal/middleware"
 	"herb-recognition-be/internal/repository"
+	"herb-recognition-be/internal/routes"
 	"herb-recognition-be/pkg/logger"
 
 	"github.com/gin-gonic/gin"
@@ -44,11 +44,8 @@ func main() {
 	// 静态文件服务
 	r.Static("/uploads", "./uploads")
 
-	// 初始化 Handler
-	healthHandler := handler.NewHealthHandler()
-
 	// 注册路由
-	r.GET("/health", healthHandler.Check)
+	routes.InitRoutes(r)
 
 	//  启动服务
 	port := config.Conf.Server.Port
