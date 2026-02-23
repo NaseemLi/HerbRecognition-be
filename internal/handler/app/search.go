@@ -46,6 +46,11 @@ func (h *SearchHandler) GetDetail(c *gin.Context) {
 		return
 	}
 
+	if id == 0 {
+		response.Error(c, 400, "无效的 ID", nil)
+		return
+	}
+
 	herb, err := h.herbService.GetDetail(uint(id))
 	if err != nil {
 		response.Error(c, 404, err.Error(), nil)
