@@ -29,6 +29,7 @@ type CreateHerbRequest struct {
 	Description string `json:"description"`
 	Effects     string `json:"effects"`
 	Usage       string `json:"usage"`
+	ImageUrl    string `json:"image_url"`
 }
 
 // CreateHerb 创建药材
@@ -47,6 +48,7 @@ func (s *AdminHerbService) CreateHerb(req *CreateHerbRequest) (*model.Herb, erro
 		Description: req.Description,
 		Effects:     req.Effects,
 		Usage:       req.Usage,
+		ImageURL:    req.ImageUrl,
 	}
 
 	if err := repository.DB.Create(&herb).Error; err != nil {
@@ -66,6 +68,7 @@ type UpdateHerbRequest struct {
 	Description string `json:"description"`
 	Effects     string `json:"effects"`
 	Usage       string `json:"usage"`
+	ImageUrl    string `json:"image_url"`
 }
 
 // UpdateHerb 更新药材
@@ -91,6 +94,7 @@ func (s *AdminHerbService) UpdateHerb(req *UpdateHerbRequest) (*model.Herb, erro
 	herb.Description = req.Description
 	herb.Effects = req.Effects
 	herb.Usage = req.Usage
+	herb.ImageURL = req.ImageUrl
 
 	if err := repository.DB.Save(&herb).Error; err != nil {
 		return nil, errors.New("更新失败")

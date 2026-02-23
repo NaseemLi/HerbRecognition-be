@@ -259,7 +259,8 @@
   "category": "string (可选)",
   "description": "string (可选)",
   "effects": "string (可选)",
-  "usage": "string (可选)"
+  "usage": "string (可选)",
+  "image_url": "string (可选，图片 URL)"
 }
 ```
 - **响应**:
@@ -293,7 +294,8 @@
   "category": "string",
   "description": "string",
   "effects": "string",
-  "usage": "string"
+  "usage": "string",
+  "image_url": "string (可选，图片 URL)"
 }
 ```
 - **响应**: 同 `创建药材`
