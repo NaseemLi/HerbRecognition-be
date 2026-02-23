@@ -13,8 +13,8 @@ type User struct {
 	Password  string         `gorm:"size:64;not null" json:"-"`
 	Role      string         `gorm:"size:20;default:user" json:"role"` // admin 或 user
 	Avatar    string         `gorm:"size:255" json:"avatar"`
-	CreatedAt time.Time      `json:"created_at"`
-	UpdatedAt time.Time      `json:"updated_at"`
+	CreatedAt time.Time      `json:"-"`
+	UpdatedAt time.Time      `json:"-"`
 	DeletedAt gorm.DeletedAt `gorm:"index" json:"-"`
 }
 
