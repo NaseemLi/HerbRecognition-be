@@ -19,7 +19,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-MODEL_PATH = os.path.join(os.path.dirname(__file__), "../../models/best_herb_model.pth")
+MODEL_PATH = os.path.join(os.path.dirname(__file__), "models/best_herb_model.pth")
 CLASS_NAMES_PATH = os.path.join(os.path.dirname(__file__), "herb_classes.txt")
 
 IMG_SIZE = 224

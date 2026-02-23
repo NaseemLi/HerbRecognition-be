@@ -17,7 +17,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY services/inference-service/ ./
 
-# Copy model files
+# Copy model files to correct location
 COPY models/ ./models/
 
 # Expose port

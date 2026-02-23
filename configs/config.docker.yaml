@@ -1,17 +1,17 @@
 server:
-  port: ${SERVER_PORT:-8080}
+  port: 8080
   mode: debug
 
 database:
-  host: ${DB_HOST:-db}
-  port: ${DB_PORT:-3306}
-  user: ${DB_USER:-root}
-  password: ${DB_PASSWORD:-123456}
-  dbname: ${DB_NAME:-herb_recognition}
+  host: db
+  port: 3306
+  user: root
+  password: 123456
+  dbname: herb_recognition
   charset: utf8mb4
   parseTime: true
   loc: Local
 
 # 识别模块地址
 model_service:
-  url: "http://inference:${INFERENCE_PORT:-5001}"
+  url: "http://inference:5001"
