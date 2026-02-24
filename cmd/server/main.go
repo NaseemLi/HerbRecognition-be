@@ -3,12 +3,46 @@ package main
 import (
 	"herb-recognition-be/internal/config"
 	"herb-recognition-be/internal/middleware"
+	"herb-recognition-be/internal/model"
 	"herb-recognition-be/internal/repository"
 	"herb-recognition-be/internal/routes"
 	"herb-recognition-be/pkg/logger"
 
 	"github.com/gin-gonic/gin"
+	"golang.org/x/crypto/bcrypt"
 )
+
+// initRootUser 创建默认 root 管理员用户
+func initRootUser() {
+	var user model.User
+	// 检查是否已存在 root 用户
+	if err := repository.DB.Where("username = ?", "root").First(&user).Error; err == nil {
+		logger.Info("root 用户已存在，跳过创建")
+		return
+	}
+
+	// 密码加密
+	hashedPassword, err := bcrypt.GenerateFromPassword([]byte("admin123"), bcrypt.DefaultCost)
+	if err != nil {
+		logger.Error("root 用户密码加密失败：%v", err)
+		return
+	}
+
+	// 创建 root 用户
+	rootUser := model.User{
+		Username: "root",
+		Password: string(hashedPassword),
+		Role:     "admin",
+		Avatar:   "",
+	}
+
+	if err := repository.DB.Create(&rootUser).Error; err != nil {
+		logger.Error("创建 root 用户失败：%v", err)
+		return
+	}
+
+	logger.Info("root 用户创建成功（用户名：root, 密码：admin123）")
+}
 
 func main() {
 	// 初始化日志（默认 info 级别）
@@ -33,6 +67,9 @@ func main() {
 		logger.Fatalf("数据库初始化失败：%v", err)
 	}
 	logger.Info("数据库初始化成功")
+
+	// 创建默认 root 用户
+	initRootUser()
 
 	// 创建 Gin 路由
 	r := gin.New()
