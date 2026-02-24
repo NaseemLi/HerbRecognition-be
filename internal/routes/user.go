@@ -1,20 +1,20 @@
 package routes
 
 import (
-	"herb-recognition-be/internal/handler/admin"
+	"herb-recognition-be/internal/handler/app"
 	"herb-recognition-be/internal/middleware"
 
 	"github.com/gin-gonic/gin"
 )
 
-func registerAdminUserRoutes(r *gin.Engine) {
-	adminUserHandler := admin.NewAdminUserHandler()
+func registerUserRoutes(r *gin.Engine) {
+	userHandler := app.NewUserHandler()
 
-	admin := r.Group("/api/admin/user")
-	admin.Use(middleware.JWTAuth())
-	admin.Use(middleware.RequireRole("admin"))
+	user := r.Group("/api/user")
+	user.Use(middleware.JWTAuth())
 	{
-		admin.GET("", adminUserHandler.GetUserList)          // 用户列表
-		admin.POST("/role", adminUserHandler.UpdateUserRole) // 修改用户角色
+		user.GET("/profile", userHandler.GetProfile)    // 获取用户资料
+		user.PUT("/profile", userHandler.UpdateProfile) // 更新用户资料
+		user.POST("/avatar", userHandler.UploadAvatar)  // 上传头像
 	}
 }

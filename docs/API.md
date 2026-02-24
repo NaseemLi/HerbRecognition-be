@@ -65,7 +65,8 @@
       "id": 1,
       "username": "testuser",
       "role": "user",
-      "avatar": ""
+      "avatar": "",
+      "created_at": "2026-02-23T06:01:45.365Z"
     }
   }
 }
@@ -87,6 +88,75 @@
   "code": 200,
   "message": "密码修改成功",
   "data": null
+}
+```
+
+---
+
+## 用户模块 `/api/user`
+
+### 1. 获取用户资料
+- **接口**: `GET /api/user/profile`
+- **权限**: 需登录
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "获取成功",
+  "data": {
+    "user": {
+      "id": 1,
+      "username": "testuser",
+      "role": "user",
+      "avatar": "/uploads/avatars/avatar_xxx.jpg",
+      "created_at": "2026-02-23T06:01:45.365Z"
+    }
+  }
+}
+```
+
+### 2. 更新用户资料
+- **接口**: `PUT /api/user/profile`
+- **权限**: 需登录
+- **请求参数**: `application/json`
+```json
+{
+  "username": "string (3-32 字符，可选)",
+  "avatar": "string (头像URL，可选)"
+}
+```
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "资料更新成功",
+  "data": {
+    "user": {
+      "id": 1,
+      "username": "newusername",
+      "role": "user",
+      "avatar": "/uploads/avatars/avatar_xxx.jpg",
+      "created_at": "2026-02-23T06:01:45.365Z"
+    }
+  }
+}
+```
+
+### 3. 上传头像
+- **接口**: `POST /api/user/avatar`
+- **权限**: 需登录
+- **请求**: `multipart/form-data`
+  - `avatar`: 图片文件（必填）
+  - 支持格式：JPG, PNG, GIF, WEBP
+  - 最大大小：2MB
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "头像上传成功",
+  "data": {
+    "avatar_url": "/uploads/avatars/avatar_xxx.jpg"
+  }
 }
 ```
 
