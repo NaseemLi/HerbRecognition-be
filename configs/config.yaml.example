@@ -11,6 +11,28 @@ database:
   charset: utf8mb4
   parseTime: true
   loc: Local
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600 # 秒
 
+#识别模块地址地址
 model_service:
   url: "http://127.0.0.1:5000"
+
+# JWT 配置
+jwt:
+  secret: "your-secret-key" # 生产环境请修改
+  expire_hours: 168 # 7天
+
+# CORS 配置
+cors:
+  allow_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+    - "http://127.0.0.1:3000"
+    - "http://127.0.0.1:5173"
+
+# 默认管理员配置
+admin:
+  username: "root"
+  password: "root123" # 留空则自动生成随机密码并打印到日志

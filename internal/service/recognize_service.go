@@ -3,18 +3,14 @@ package service
 import (
 	"errors"
 	"fmt"
-	"io"
 	"mime/multipart"
-	"net/http"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"herb-recognition-be/internal/client"
 	"herb-recognition-be/internal/model"
 	"herb-recognition-be/internal/repository"
-
-	"github.com/google/uuid"
+	"herb-recognition-be/pkg/upload"
 )
 
 var pythonServiceClient *client.PythonServiceClient
@@ -36,84 +32,12 @@ func init() {
 // RecognizeService 识别服务
 type RecognizeService struct{}
 
-// 允许的图片扩展名
-var allowedExtensions = map[string]bool{
-	".jpg":  true,
-	".jpeg": true,
-	".png":  true,
-	".gif":  true,
-	".webp": true,
-}
-
-// 允许的图片 MIME 类型
-var allowedMimeTypes = map[string]bool{
-	"image/jpeg": true,
-	"image/png":  true,
-	"image/gif":  true,
-	"image/webp": true,
-}
-
-// 最大文件大小 5MB
-const maxFileSize = 5 * 1024 * 1024
-
 // UploadImage 上传图片（带安全校验）
 func (s *RecognizeService) UploadImage(file *multipart.FileHeader) (string, error) {
-	// 检查文件大小
-	if file.Size > maxFileSize {
-		return "", errors.New("文件大小不能超过 5MB")
-	}
-
-	// 检查文件扩展名
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	if !allowedExtensions[ext] {
-		return "", errors.New("不支持的图片格式，仅支持 JPG、PNG、GIF、WEBP")
-	}
-
-	// 打开上传的文件
-	src, err := file.Open()
-	if err != nil {
-		return "", errors.New("文件打开失败")
-	}
-	defer src.Close()
-
-	// 读取文件头进行 MIME 类型校验
-	buf := make([]byte, 512)
-	n, err := src.Read(buf)
-	if err != nil && err != io.EOF {
-		return "", errors.New("文件读取失败")
-	}
-	buf = buf[:n]
-
-	// 检测真实 MIME 类型
-	contentType := http.DetectContentType(buf)
-	if !allowedMimeTypes[contentType] {
-		return "", errors.New("文件类型不匹配，请上传有效的图片")
-	}
-
-	// 生成唯一文件名
-	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-	uploadDir := "./uploads/images"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return "", errors.New("创建上传目录失败")
-	}
-
-	// 保存文件
-	filePath := filepath.Join(uploadDir, filename)
-	dst, err := os.Create(filePath)
-	if err != nil {
-		return "", errors.New("文件保存失败")
-	}
-	defer dst.Close()
-
-	// 重置文件指针并复制内容
-	src.Seek(0, 0)
-	if _, err := io.Copy(dst, src); err != nil {
-		return "", errors.New("文件保存失败")
-	}
-
-	// 返回访问 URL
-	url := "/uploads/images/" + filename
-	return url, nil
+	cfg := upload.DefaultImageConfig
+	cfg.UploadDir = "./uploads/images"
+	cfg.URLPrefix = "/uploads/images/"
+	return upload.UploadFile(file, cfg)
 }
 
 // RecognizeRequest 识别请求
@@ -226,10 +150,7 @@ func (s *RecognizeService) DeleteHistory(userID, recordID uint) error {
 	}
 
 	// 删除图片文件
-	if record.ImageURL != "" {
-		filePath := "." + record.ImageURL
-		os.Remove(filePath)
-	}
+	upload.DeleteFile(record.ImageURL)
 
 	return repository.DB.Delete(&record).Error
 }

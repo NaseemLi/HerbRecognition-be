@@ -10,6 +10,9 @@ type Config struct {
 	Server       ServerConfig       `mapstructure:"server"`
 	Database     DatabaseConfig     `mapstructure:"database"`
 	ModelService ModelServiceConfig `mapstructure:"model_service"`
+	JWT          JWTConfig         `mapstructure:"jwt"`
+	CORS         CORSConfig        `mapstructure:"cors"`
+	Admin        AdminConfig       `mapstructure:"admin"`
 }
 
 type ServerConfig struct {
@@ -19,14 +22,17 @@ type ServerConfig struct {
 
 // DatabaseConfig 数据库配置
 type DatabaseConfig struct {
-	Host      string `mapstructure:"host"`
-	Port      int    `mapstructure:"port"`
-	User      string `mapstructure:"user"`
-	Password  string `mapstructure:"password"`
-	DBName    string `mapstructure:"dbname"`
-	Charset   string `mapstructure:"charset"`
-	ParseTime bool   `mapstructure:"parseTime"`
-	Loc       string `mapstructure:"loc"`
+	Host            string `mapstructure:"host"`
+	Port            int    `mapstructure:"port"`
+	User            string `mapstructure:"user"`
+	Password        string `mapstructure:"password"`
+	DBName          string `mapstructure:"dbname"`
+	Charset         string `mapstructure:"charset"`
+	ParseTime       bool   `mapstructure:"parseTime"`
+	Loc             string `mapstructure:"loc"`
+	MaxIdleConns    int    `mapstructure:"max_idle_conns"`
+	MaxOpenConns    int    `mapstructure:"max_open_conns"`
+	ConnMaxLifetime int    `mapstructure:"conn_max_lifetime"`
 }
 
 // 拼接 DSN 连接字符串
@@ -45,6 +51,23 @@ func (c *DatabaseConfig) BuildDSN() string {
 
 type ModelServiceConfig struct {
 	URL string `mapstructure:"url"`
+}
+
+// JWTConfig JWT 配置
+type JWTConfig struct {
+	Secret      string `mapstructure:"secret"`
+	ExpireHours int    `mapstructure:"expire_hours"`
+}
+
+// CORSConfig CORS 配置
+type CORSConfig struct {
+	AllowOrigins []string `mapstructure:"allow_origins"`
+}
+
+// AdminConfig 默认管理员配置
+type AdminConfig struct {
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
 }
 
 var Conf *Config

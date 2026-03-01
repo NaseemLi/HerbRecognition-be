@@ -60,7 +60,11 @@ docker-compose down
 │   ├── client/              # 外部服务客户端
 │   └── config/              # 配置加载
 ├── pkg/                      # 公共包
-│   └── response/            # 统一响应格式
+│   ├── response/            # 统一响应格式
+│   ├── jwtutil/             # JWT 工具包
+│   ├── upload/              # 文件上传工具包
+│   ├── logger/              # 日志工具
+│   └── errors/              # 错误定义
 ├── models/                   # AI 模型文件
 │   └── best_herb_model.pth
 ├── services/                 # Python 推理服务

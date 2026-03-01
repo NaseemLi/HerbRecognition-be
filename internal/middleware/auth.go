@@ -4,21 +4,11 @@ import (
 	"net/http"
 	"strings"
 
+	"herb-recognition-be/pkg/jwtutil"
 	"herb-recognition-be/pkg/response"
 
 	"github.com/gin-gonic/gin"
-	"github.com/golang-jwt/jwt/v5"
 )
-
-// Claims JWT 声明
-type Claims struct {
-	UserID   uint   `json:"user_id"`
-	Username string `json:"username"`
-	Role     string `json:"role"`
-	jwt.RegisteredClaims
-}
-
-var jwtSecret = []byte("herb-recognition-secret-key")
 
 // JWT 认证中间件
 func JWTAuth() gin.HandlerFunc {
@@ -36,24 +26,14 @@ func JWTAuth() gin.HandlerFunc {
 		}
 
 		// 解析 token
-		token, err := jwt.ParseWithClaims(tokenString, &Claims{}, func(token *jwt.Token) (interface{}, error) {
-			return jwtSecret, nil
-		})
-
-		if err != nil || !token.Valid {
+		claims, err := jwtutil.ParseToken(tokenString)
+		if err != nil {
 			response.Error(c, http.StatusUnauthorized, "token 无效或已过期", nil)
 			c.Abort()
 			return
 		}
 
 		// 将用户信息存入上下文
-		claims, ok := token.Claims.(*Claims)
-		if !ok {
-			response.Error(c, http.StatusUnauthorized, "token 解析失败", nil)
-			c.Abort()
-			return
-		}
-
 		c.Set("user_id", claims.UserID)
 		c.Set("username", claims.Username)
 		c.Set("role", claims.Role)

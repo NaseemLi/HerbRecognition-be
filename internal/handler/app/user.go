@@ -2,8 +2,6 @@ package app
 
 import (
 	"herb-recognition-be/internal/middleware"
-	"herb-recognition-be/internal/model"
-	"herb-recognition-be/internal/repository"
 	"herb-recognition-be/internal/service"
 	"herb-recognition-be/pkg/response"
 
@@ -90,9 +88,9 @@ func (h *UserHandler) GetProfile(c *gin.Context) {
 		return
 	}
 
-	var user model.User
-	if err := repository.DB.Select("id, username, role, avatar, created_at").First(&user, userID).Error; err != nil {
-		response.Error(c, 400, "获取用户资料失败", nil)
+	user, err := h.authService.GetProfile(userID)
+	if err != nil {
+		response.Error(c, 400, err.Error(), nil)
 		return
 	}
 

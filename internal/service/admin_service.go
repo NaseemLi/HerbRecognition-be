@@ -2,18 +2,12 @@ package service
 
 import (
 	"errors"
-	"fmt"
-	"io"
 	"mime/multipart"
-	"net/http"
-	"os"
-	"path/filepath"
-	"strings"
 
 	"herb-recognition-be/internal/model"
 	"herb-recognition-be/internal/repository"
+	"herb-recognition-be/pkg/upload"
 
-	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -114,10 +108,7 @@ func (s *AdminHerbService) DeleteHerb(id uint) error {
 	}
 
 	// 删除关联的图片文件
-	if herb.ImageURL != "" {
-		filePath := "." + herb.ImageURL
-		os.Remove(filePath)
-	}
+	upload.DeleteFile(herb.ImageURL)
 
 	// 删除药材（软删除）
 	if err := repository.DB.Delete(&herb).Error; err != nil {
@@ -129,57 +120,10 @@ func (s *AdminHerbService) DeleteHerb(id uint) error {
 
 // UploadAndSetImage 上传并设置药材图片
 func (s *AdminHerbService) UploadAndSetImage(file *multipart.FileHeader) (string, error) {
-	// 检查文件大小 (5MB)
-	if file.Size > 5*1024*1024 {
-		return "", errors.New("文件大小不能超过 5MB")
-	}
-
-	// 检查扩展名
-	ext := strings.ToLower(filepath.Ext(file.Filename))
-	allowedExts := map[string]bool{".jpg": true, ".jpeg": true, ".png": true, ".gif": true, ".webp": true}
-	if !allowedExts[ext] {
-		return "", errors.New("不支持的图片格式")
-	}
-
-	// 打开文件
-	src, err := file.Open()
-	if err != nil {
-		return "", errors.New("文件打开失败")
-	}
-	defer src.Close()
-
-	// 读取文件头校验 MIME 类型
-	buf := make([]byte, 512)
-	n, _ := src.Read(buf)
-	contentType := http.DetectContentType(buf[:n])
-	allowedMimes := map[string]bool{
-		"image/jpeg": true, "image/png": true, "image/gif": true, "image/webp": true,
-	}
-	if !allowedMimes[contentType] {
-		return "", errors.New("文件类型不匹配")
-	}
-
-	// 生成文件名
-	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-	uploadDir := "./uploads/herbs"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return "", errors.New("创建目录失败")
-	}
-
-	// 保存文件
-	filePath := filepath.Join(uploadDir, filename)
-	dst, err := os.Create(filePath)
-	if err != nil {
-		return "", errors.New("文件保存失败")
-	}
-	defer dst.Close()
-
-	src.Seek(0, 0)
-	if _, err := io.Copy(dst, src); err != nil {
-		return "", errors.New("文件保存失败")
-	}
-
-	return "/uploads/herbs/" + filename, nil
+	cfg := upload.DefaultImageConfig
+	cfg.UploadDir = "./uploads/herbs"
+	cfg.URLPrefix = "/uploads/herbs/"
+	return upload.UploadFile(file, cfg)
 }
 
 // BatchDeleteHerb 批量删除药材
@@ -195,10 +139,7 @@ func (s *AdminHerbService) BatchDeleteHerb(ids []uint) error {
 	}
 
 	for _, herb := range herbs {
-		if herb.ImageURL != "" {
-			filePath := "." + herb.ImageURL
-			os.Remove(filePath)
-		}
+		upload.DeleteFile(herb.ImageURL)
 	}
 
 	// 批量删除（软删除）
