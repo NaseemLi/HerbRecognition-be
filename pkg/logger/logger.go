@@ -25,14 +25,14 @@ func Init(level string) error {
 
 	// 编码器配置（文本格式）
 	encoderConfig := zapcore.EncoderConfig{
-		TimeKey:        "T",
-		LevelKey:       "L",
-		NameKey:        "N",
-		CallerKey:      "C",
-		MessageKey:     "M",
-		StacktraceKey:  "S",
+		TimeKey:        "time",
+		LevelKey:       "level",
+		NameKey:        "logger",
+		CallerKey:      "caller",
+		MessageKey:     "msg",
+		StacktraceKey:  "stacktrace",
 		LineEnding:     zapcore.DefaultLineEnding,
-		EncodeLevel:    zapcore.CapitalColorLevelEncoder,
+		EncodeLevel:    zapcore.LowercaseLevelEncoder,
 		EncodeTime:     timeEncoder,
 		EncodeDuration: zapcore.SecondsDurationEncoder,
 		EncodeCaller:   zapcore.ShortCallerEncoder,
@@ -88,4 +88,12 @@ func Errorf(template string, args ...interface{}) {
 
 func Fatalf(template string, args ...interface{}) {
 	Log.Fatalf(template, args...)
+}
+
+func Debugf(template string, args ...interface{}) {
+	Log.Debugf(template, args...)
+}
+
+func Warnf(template string, args ...interface{}) {
+	Log.Warnf(template, args...)
 }

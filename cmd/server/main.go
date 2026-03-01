@@ -33,7 +33,7 @@ func initRootUser() {
 	var user model.User
 	// 检查是否已存在 root 用户
 	if err := repository.DB.Where("username = ?", username).First(&user).Error; err == nil {
-		logger.Info("%s 用户已存在，跳过创建", username)
+		logger.Infof("%s 用户已存在，跳过创建", username)
 		return
 	}
 
@@ -48,7 +48,7 @@ func initRootUser() {
 	// 密码加密
 	hashedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
 	if err != nil {
-		logger.Error("%s 用户密码加密失败：%v", username, err)
+		logger.Errorf("%s 用户密码加密失败：%v", username, err)
 		return
 	}
 
@@ -61,14 +61,14 @@ func initRootUser() {
 	}
 
 	if err := repository.DB.Create(&rootUser).Error; err != nil {
-		logger.Error("创建 %s 用户失败：%v", username, err)
+		logger.Errorf("创建 %s 用户失败：%v", username, err)
 		return
 	}
 
 	if isRandomPassword {
-		logger.Info("%s 用户创建成功，随机密码：%s（请登录后立即修改密码）", username, password)
+		logger.Infof("%s 用户创建成功，随机密码：%s（请登录后立即修改密码）", username, password)
 	} else {
-		logger.Info("%s 用户创建成功（请登录后修改密码）", username)
+		logger.Infof("%s 用户创建成功（请登录后修改密码）", username)
 	}
 }
 

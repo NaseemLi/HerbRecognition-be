@@ -19,7 +19,7 @@ func RequestLogger() gin.HandlerFunc {
 		cost := time.Since(start)
 
 		logger.Infof(
-			"%s %s %d %v %s",
+			"request method=%s path=%s status=%d latency=%s query=%q",
 			c.Request.Method,
 			path,
 			c.Writer.Status(),
