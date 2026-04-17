@@ -12,24 +12,32 @@
 #### 方法 1: 手动安装
 
 ```bash
-# 下载 ONNX Runtime
-wget https://github.com/microsoft/onnxruntime/releases/download/v1.21.0/onnxruntime-linux-x64-1.21.0.tgz
-tar -xzf onnxruntime-linux-x64-1.21.0.tgz
+# amd64 示例
+wget https://github.com/microsoft/onnxruntime/releases/download/v1.24.1/onnxruntime-linux-x64-1.24.1.tgz
+tar -xzf onnxruntime-linux-x64-1.24.1.tgz
 
 # 安装到系统目录
-sudo cp onnxruntime-linux-x64-1.21.0/lib/libonnxruntime.so.1.21.0 /usr/local/lib/libonnxruntime.so
+sudo cp onnxruntime-linux-x64-1.24.1/lib/libonnxruntime.so.1.24.1 /usr/local/lib/libonnxruntime.so
 sudo ldconfig
 
 # 清理
-rm -rf onnxruntime-linux-x64-1.21.0*
+rm -rf onnxruntime-linux-x64-1.24.1*
 ```
 
-#### 方法 2: 使用项目自带的库
+如果是 `arm64` 机器，将下载文件名中的 `x64` 改为 `aarch64`。
+
+#### 方法 2: 手动指定库路径
 
 将 `libonnxruntime.so` 放在以下任一位置：
 - `./models/onnx/libonnxruntime.so`
 - `./lib/libonnxruntime.so`
 - `/usr/local/lib/libonnxruntime.so`
+
+或者直接设置环境变量：
+
+```bash
+export ONNX_RUNTIME_LIB=/path/to/libonnxruntime.so
+```
 
 ## 编译
 
@@ -53,7 +61,7 @@ export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
 ### 方式 2: Docker (推荐)
 
 ```bash
-docker-compose up --build
+docker compose up --build
 ```
 
 ## 常见问题
@@ -61,8 +69,8 @@ docker-compose up --build
 ### 问题 1: 找不到 libonnxruntime.so
 
 **错误信息：**
-```
-未找到 libonnxruntime 动态库
+```text
+未找到 ONNX Runtime 动态库
 ```
 
 **解决：**
@@ -96,7 +104,7 @@ sudo apt-get install libc6
 ### 问题 3: 库版本不匹配
 
 **错误信息：**
-```
+```text
 version 'GLIBCXX_3.4.29' not found
 ```
 
@@ -129,7 +137,7 @@ ldd herb-server
 ldconfig -p | grep onnxruntime
 
 # 运行测试
-curl -X POST http://localhost:8080/api/v1/recognize \
+curl -X POST http://localhost:8080/api/recognize/upload \
   -H "Authorization: Bearer <token>" \
   -F "image=@test.jpg"
 ```
