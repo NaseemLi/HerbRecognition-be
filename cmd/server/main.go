@@ -117,14 +117,17 @@ func main() {
 		logger.Infof("ONNX 预测器初始化成功，类别数：%d", onnx.GetClassCount())
 	}
 
+	serverMode := config.Conf.Server.Mode
+	if serverMode == "" {
+		serverMode = gin.ReleaseMode
+	}
+	gin.SetMode(serverMode)
+
 	// 创建 Gin 路由
 	r := gin.New()
 
 	// 设置可信代理
 	r.SetTrustedProxies(nil)
-
-	// 设置 Gin 模式
-	gin.SetMode(config.Conf.Server.Mode)
 
 	// 注册全局中间件
 	r.Use(middleware.Recovery())

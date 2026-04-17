@@ -2,6 +2,8 @@ package config
 
 import (
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/spf13/viper"
 )
@@ -10,9 +12,9 @@ type Config struct {
 	Server       ServerConfig       `mapstructure:"server"`
 	Database     DatabaseConfig     `mapstructure:"database"`
 	ModelService ModelServiceConfig `mapstructure:"model_service"`
-	JWT          JWTConfig         `mapstructure:"jwt"`
-	CORS         CORSConfig        `mapstructure:"cors"`
-	Admin        AdminConfig       `mapstructure:"admin"`
+	JWT          JWTConfig          `mapstructure:"jwt"`
+	CORS         CORSConfig         `mapstructure:"cors"`
+	Admin        AdminConfig        `mapstructure:"admin"`
 }
 
 type ServerConfig struct {
@@ -50,9 +52,9 @@ func (c *DatabaseConfig) BuildDSN() string {
 }
 
 type ModelServiceConfig struct {
-	URL            string `mapstructure:"url"`
-	ONNXModelPath  string `mapstructure:"onnx_model_path"`
-	ClassesPath    string `mapstructure:"classes_path"`
+	URL           string `mapstructure:"url"`
+	ONNXModelPath string `mapstructure:"onnx_model_path"`
+	ClassesPath   string `mapstructure:"classes_path"`
 }
 
 // JWTConfig JWT 配置
@@ -78,6 +80,32 @@ func Init() error {
 	viper.SetConfigName("config")
 	viper.SetConfigType("yaml")
 	viper.AddConfigPath("./configs")
+	viper.AutomaticEnv()
+	viper.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
+
+	envBindings := map[string]string{
+		"server.port":                   "SERVER_PORT",
+		"server.mode":                   "SERVER_MODE",
+		"database.host":                 "DB_HOST",
+		"database.port":                 "DB_PORT",
+		"database.user":                 "DB_USER",
+		"database.password":             "DB_PASSWORD",
+		"database.dbname":               "DB_NAME",
+		"model_service.onnx_model_path": "ONNX_MODEL_PATH",
+		"model_service.classes_path":    "CLASSES_PATH",
+		"admin.username":                "ADMIN_USERNAME",
+		"admin.password":                "ADMIN_PASSWORD",
+	}
+
+	for key, envName := range envBindings {
+		if err := viper.BindEnv(key, envName); err != nil {
+			return err
+		}
+	}
+
+	if configName := strings.TrimSpace(os.Getenv("CONFIG_NAME")); configName != "" {
+		viper.SetConfigName(configName)
+	}
 
 	if err := viper.ReadInConfig(); err != nil {
 		return err

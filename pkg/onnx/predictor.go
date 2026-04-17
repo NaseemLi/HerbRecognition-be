@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"herb-recognition-be/pkg/logger"
 
@@ -70,13 +71,28 @@ func findLibraryPath() string {
 		filepath.Join(exeDir, ".."),
 		filepath.Join(exeDir, "..", ".."),
 		".",
-		"./models/onnx",  // 新增：模型目录
+		"./models/onnx",
 		"./lib",
-		"/usr/local/lib",
-		"/opt/homebrew/lib",
 	}
 
+	if ldLibraryPath := strings.TrimSpace(os.Getenv("LD_LIBRARY_PATH")); ldLibraryPath != "" {
+		searchPaths = append(searchPaths, strings.Split(ldLibraryPath, string(os.PathListSeparator))...)
+	}
+
+	searchPaths = append(searchPaths,
+		"/usr/local/lib",
+		"/usr/local/lib64",
+		"/usr/lib",
+		"/usr/lib64",
+		"/lib",
+		"/lib64",
+		"/opt/homebrew/lib",
+	)
+
 	for _, dir := range searchPaths {
+		if dir == "" {
+			continue
+		}
 		for _, name := range libNames {
 			path := filepath.Join(dir, name)
 			if info, err := os.Stat(path); err == nil && !info.IsDir() {
@@ -88,15 +104,30 @@ func findLibraryPath() string {
 	return ""
 }
 
+func resolveLibraryPath() (string, error) {
+	if libPath := strings.TrimSpace(os.Getenv("ONNX_RUNTIME_LIB")); libPath != "" {
+		if info, err := os.Stat(libPath); err == nil && !info.IsDir() {
+			return libPath, nil
+		}
+		return "", fmt.Errorf("环境变量 ONNX_RUNTIME_LIB 指定的库文件不存在: %s", libPath)
+	}
+
+	if libPath := findLibraryPath(); libPath != "" {
+		return libPath, nil
+	}
+
+	return "", fmt.Errorf("未找到 ONNX Runtime 动态库，请设置 ONNX_RUNTIME_LIB 或将库文件放到 ./models/onnx、./lib、/usr/local/lib 等目录")
+}
+
 // InitPredictor 初始化 ONNX 预测器
 func InitPredictor(modelPath, classesPath string) error {
-	libPath := findLibraryPath()
-	if libPath != "" {
-		onnxruntime_go.SetSharedLibraryPath(libPath)
-		logger.Infof("找到 ONNX Runtime 库: %s", libPath)
-	} else {
-		logger.Warn("未找到 libonnxruntime 动态库，将尝试系统默认路径")
+	libPath, err := resolveLibraryPath()
+	if err != nil {
+		return err
 	}
+
+	onnxruntime_go.SetSharedLibraryPath(libPath)
+	logger.Infof("尝试加载 ONNX Runtime 库: %s", libPath)
 
 	if err := onnxruntime_go.InitializeEnvironment(); err != nil {
 		return fmt.Errorf("初始化 ONNX Runtime 环境失败: %v", err)
@@ -156,7 +187,7 @@ func InitPredictor(modelPath, classesPath string) error {
 func loadClasses(path string) ([]string, error) {
 	possiblePaths := []string{
 		path,
-		"./models/onnx/classes.txt",  // 新增
+		"./models/onnx/classes.txt", // 新增
 		"./classes.txt",
 		"../classes.txt",
 		"../../classes.txt",

@@ -1,54 +1,67 @@
-# Build stage
-FROM golang:1.25-alpine AS builder
+# syntax=docker/dockerfile:1.7
 
-WORKDIR /app
+ARG GO_VERSION=1.25
+ARG ONNXRUNTIME_VERSION=1.24.1
 
-# Install dependencies
-RUN apk add --no-cache git
+FROM --platform=$TARGETPLATFORM golang:${GO_VERSION}-bookworm AS builder
 
-# Copy go mod files
+ARG TARGETOS
+ARG TARGETARCH
+
+WORKDIR /src
+
+ENV GOPROXY=https://goproxy.cn,direct
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends build-essential ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
 COPY go.mod go.sum ./
+RUN go mod download
 
-# Copy source code
 COPY . .
 
-# Download ONNX Runtime library (Linux version)
-RUN wget -q https://github.com/microsoft/onnxruntime/releases/download/v1.21.0/onnxruntime-linux-x64-1.21.0.tgz && \
-    tar -xzf onnxruntime-linux-x64-1.21.0.tgz && \
-    mkdir -p models/onnx && \
-    mv onnxruntime-linux-x64-1.21.0/lib/libonnxruntime.so.1.21.0 ./models/onnx/libonnxruntime.so && \
-    rm -rf onnxruntime-linux-x64-1.21.0*
+RUN CGO_ENABLED=1 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH:-amd64} \
+    go build -o /out/main ./cmd/server/main.go
 
-# Build
-RUN GOPROXY="https://goproxy.cn,https://goproxy.io,direct" GOSUMDB=off \
-    CGO_ENABLED=1 GOOS=linux go build -a -o main ./cmd/server/main.go
+FROM --platform=$TARGETPLATFORM debian:bookworm-slim AS onnxruntime
 
+ARG TARGETARCH
+ARG ONNXRUNTIME_VERSION
 
-# Runtime stage
-FROM alpine:latest
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates wget tar && \
+    rm -rf /var/lib/apt/lists/*
+
+RUN case "${TARGETARCH}" in \
+        amd64) ort_arch="x64" ;; \
+        arm64) ort_arch="aarch64" ;; \
+        *) echo "Unsupported TARGETARCH: ${TARGETARCH}" >&2; exit 1 ;; \
+    esac && \
+    wget -q "https://github.com/microsoft/onnxruntime/releases/download/v${ONNXRUNTIME_VERSION}/onnxruntime-linux-${ort_arch}-${ONNXRUNTIME_VERSION}.tgz" && \
+    tar -xzf "onnxruntime-linux-${ort_arch}-${ONNXRUNTIME_VERSION}.tgz" && \
+    install -Dm644 \
+        "onnxruntime-linux-${ort_arch}-${ONNXRUNTIME_VERSION}/lib/libonnxruntime.so.${ONNXRUNTIME_VERSION}" \
+        /out/usr/local/lib/libonnxruntime.so
+
+FROM --platform=$TARGETPLATFORM debian:bookworm-slim
 
 WORKDIR /app
 
-# Install ca certificates and dependencies
-RUN apk --no-cache add ca-certificates tzdata libstdc++ libgcc
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends ca-certificates tzdata libstdc++6 && \
+    rm -rf /var/lib/apt/lists/* && \
+    mkdir -p /app/models/onnx /app/uploads/images
 
-# Copy binary and required files
-COPY --from=builder /app/main .
-COPY --from=builder /app/models/onnx/libonnxruntime.so /usr/local/lib/
-COPY --from=builder /app/models/onnx/herb.onnx ./models/onnx/
-COPY --from=builder /app/models/onnx/classes.txt ./models/onnx/
-COPY --from=builder /app/configs ./configs
-COPY --from=builder /app/configs/config.docker.yaml ./configs/config.yaml
+COPY --from=builder /out/main ./main
+COPY --from=onnxruntime /out/usr/local/lib/libonnxruntime.so /usr/local/lib/libonnxruntime.so
+COPY models/onnx/herb.onnx ./models/onnx/herb.onnx
+COPY models/onnx/classes.txt ./models/onnx/classes.txt
+COPY configs/config.docker.yaml ./configs/config.yaml
 
-# Update library path
-ENV LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
+ENV LD_LIBRARY_PATH=/usr/local/lib
+ENV ONNX_RUNTIME_LIB=/usr/local/lib/libonnxruntime.so
 
-# Expose port
 EXPOSE 8080
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1
-
-# Run the application
 CMD ["./main"]
