@@ -1,6 +1,7 @@
 package service
 
 import (
+	_ "golang.org/x/image/webp"
 	_ "image/gif"
 	_ "image/jpeg"
 	_ "image/png"
@@ -10,6 +11,7 @@ import (
 	"image"
 	"mime/multipart"
 	"os"
+	"strings"
 
 	"herb-recognition-be/internal/model"
 	"herb-recognition-be/internal/repository"
@@ -108,9 +110,16 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 	}
 
 	topResult := result.TopResult
+	herbName := strings.TrimSpace(topResult.HerbName)
+	if herbName == "" {
+		herbName = "未知"
+	}
+
 	herbID := uint(topResult.HerbID)
-	record.HerbID = &herbID
-	record.HerbName = topResult.HerbName
+	if herbID > 0 {
+		record.HerbID = &herbID
+	}
+	record.HerbName = herbName
 	record.Confidence = float32(topResult.Confidence)
 
 	if err := repository.DB.Create(&record).Error; err != nil {
@@ -120,7 +129,7 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 	return &RecognizeResponse{
 		RecordID:   record.ID,
 		HerbID:     herbID,
-		HerbName:   topResult.HerbName,
+		HerbName:   herbName,
 		Confidence: float32(topResult.Confidence),
 		ImageURL:   imageURL,
 	}, nil

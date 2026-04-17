@@ -207,20 +207,31 @@ func loadClasses(path string) ([]string, error) {
 	}
 
 	var classes []string
-	for _, line := range splitLines(string(data)) {
-		if line != "" {
-			// 处理格式，提取名称部分
-			parts := splitLine(line, '\t')
-			if len(parts) >= 2 {
-				// 取最后一部分作为名称（去掉编号）
-				classes = append(classes, parts[len(parts)-1])
-			} else {
-				// 没有制表符，直接添加
-				classes = append(classes, line)
-			}
+	for _, rawLine := range splitLines(string(data)) {
+		line := normalizeClassName(rawLine)
+		if line == "" {
+			continue
 		}
+
+		// 处理格式，提取名称部分
+		parts := splitLine(line, '\t')
+		if len(parts) >= 2 {
+			// 取最后一部分作为名称（去掉编号）
+			name := normalizeClassName(parts[len(parts)-1])
+			if name != "" {
+				classes = append(classes, name)
+			}
+			continue
+		}
+
+		// 没有制表符，直接添加
+		classes = append(classes, line)
 	}
 	return classes, nil
+}
+
+func normalizeClassName(s string) string {
+	return strings.TrimSpace(strings.TrimPrefix(s, "\ufeff"))
 }
 
 // splitLine 按分隔符分割字符串
@@ -371,6 +382,16 @@ func (p *Predictor) postprocess() *RecognitionOutput {
 
 	// Top 5
 	top5 := getTop5(logits, probs, p.classes)
+	if len(top5) == 0 {
+		return &RecognitionOutput{
+			TopResult: PredictionResult{
+				HerbName:   "未知",
+				HerbID:     0,
+				Confidence: 0,
+			},
+			AllResults: nil,
+		}
+	}
 
 	return &RecognitionOutput{
 		TopResult:  top5[0],
@@ -431,9 +452,12 @@ func getTop5(logits []float32, probs []float64, classes []string) []PredictionRe
 	}
 
 	for i := 0; i < k; i++ {
-		if items[i].prob > confidenceThreshold {
+		if items[i].index < 0 || items[i].index >= len(classes) {
+			continue
+		}
+		if i == 0 || items[i].prob > confidenceThreshold {
 			results = append(results, PredictionResult{
-				HerbName:   classes[items[i].index],
+				HerbName:   normalizeClassName(classes[items[i].index]),
 				HerbID:     items[i].index + 1,
 				Confidence: round(items[i].prob*100, 2),
 			})
