@@ -9,6 +9,7 @@ import (
 	"herb-recognition-be/internal/repository"
 	"herb-recognition-be/internal/routes"
 	"herb-recognition-be/pkg/logger"
+	"herb-recognition-be/pkg/onnx"
 
 	"github.com/gin-gonic/gin"
 	"golang.org/x/crypto/bcrypt"
@@ -98,6 +99,23 @@ func main() {
 
 	// 创建默认 root 用户
 	initRootUser()
+
+	// 初始化 ONNX 预测器
+	modelPath := config.Conf.ModelService.ONNXModelPath
+	if modelPath == "" {
+		modelPath = "./models/onnx/herb.onnx"
+	}
+	classesPath := config.Conf.ModelService.ClassesPath
+	if classesPath == "" {
+		classesPath = "./models/onnx/classes.txt"
+	}
+
+	if err := onnx.InitPredictor(modelPath, classesPath); err != nil {
+		logger.Warnf("ONNX 预测器初始化失败：%v", err)
+		logger.Warn("识别功能将不可用，请检查模型文件")
+	} else {
+		logger.Infof("ONNX 预测器初始化成功，类别数：%d", onnx.GetClassCount())
+	}
 
 	// 创建 Gin 路由
 	r := gin.New()

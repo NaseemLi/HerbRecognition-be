@@ -1,33 +1,21 @@
 package service
 
 import (
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
+
 	"errors"
 	"fmt"
+	"image"
 	"mime/multipart"
 	"os"
-	"path/filepath"
 
-	"herb-recognition-be/internal/client"
 	"herb-recognition-be/internal/model"
 	"herb-recognition-be/internal/repository"
+	"herb-recognition-be/pkg/onnx"
 	"herb-recognition-be/pkg/upload"
 )
-
-var pythonServiceClient *client.PythonServiceClient
-
-// 模型默认路径 (相对路径：项目根目录/models/best_herb_model.pth)
-const DefaultModelPath = "./models/best_herb_model.pth"
-
-// 初始化 Python 服务客户端
-// 环境变量 PYTHON_SERVICE_URL 优先级高于默认值
-// 服务位于：services/inference-service/
-func init() {
-	pythonServiceURL := os.Getenv("PYTHON_SERVICE_URL")
-	if pythonServiceURL == "" {
-		pythonServiceURL = "http://localhost:5001"
-	}
-	pythonServiceClient = client.NewPythonServiceClient(pythonServiceURL)
-}
 
 // RecognizeService 识别服务
 type RecognizeService struct{}
@@ -54,7 +42,7 @@ type RecognizeResponse struct {
 	ImageURL   string  `json:"image_url"`
 }
 
-// Recognize 识别图片（调用模型并保存记录）
+// Recognize 识别图片（使用 ONNX 模型）
 func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeResponse, error) {
 	record := model.RecognitionRecord{
 		UserID:   userID,
@@ -62,8 +50,22 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		Status:   1,
 	}
 
+	// 检查 ONNX 预测器是否已初始化
+	if !onnx.IsInitialized() {
+		record.Status = 0
+		record.ErrMsg = "识别模型未初始化"
+		record.HerbName = "未知"
+		record.Confidence = 0
+
+		if err := repository.DB.Create(&record).Error; err != nil {
+			return nil, fmt.Errorf("保存识别记录失败：%v", err)
+		}
+		return nil, errors.New("识别模型未初始化，请检查模型文件")
+	}
+
+	// 加载图像
 	filePath := "." + imageURL
-	imageBytes, err := os.ReadFile(filePath)
+	imgFile, err := os.Open(filePath)
 	if err != nil {
 		record.Status = 0
 		record.ErrMsg = "读取图片失败"
@@ -75,10 +77,24 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		}
 		return nil, errors.New("读取图片失败")
 	}
+	defer imgFile.Close()
 
-	filename := filepath.Base(imageURL)
-	result, err := pythonServiceClient.RecognizeImage(imageBytes, filename)
+	// 解码图像
+	img, _, err := image.Decode(imgFile)
+	if err != nil {
+		record.Status = 0
+		record.ErrMsg = "解码图片失败"
+		record.HerbName = "未知"
+		record.Confidence = 0
 
+		if err := repository.DB.Create(&record).Error; err != nil {
+			return nil, fmt.Errorf("保存识别记录失败：%v", err)
+		}
+		return nil, errors.New("解码图片失败")
+	}
+
+	// 执行 ONNX 推理
+	result, err := onnx.Predict(img)
 	if err != nil {
 		record.Status = 0
 		record.ErrMsg = fmt.Sprintf("识别失败：%v", err)
@@ -91,10 +107,11 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		return nil, errors.New(record.ErrMsg)
 	}
 
-	herbID := uint(result.HerbID)
+	topResult := result.TopResult
+	herbID := uint(topResult.HerbID)
 	record.HerbID = &herbID
-	record.HerbName = result.HerbName
-	record.Confidence = float32(result.Confidence)
+	record.HerbName = topResult.HerbName
+	record.Confidence = float32(topResult.Confidence)
 
 	if err := repository.DB.Create(&record).Error; err != nil {
 		return nil, fmt.Errorf("保存识别记录失败：%v", err)
@@ -103,8 +120,8 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 	return &RecognizeResponse{
 		RecordID:   record.ID,
 		HerbID:     herbID,
-		HerbName:   result.HerbName,
-		Confidence: float32(result.Confidence),
+		HerbName:   topResult.HerbName,
+		Confidence: float32(topResult.Confidence),
 		ImageURL:   imageURL,
 	}, nil
 }

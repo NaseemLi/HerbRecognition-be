@@ -1,6 +1,6 @@
 server:
   port: 8080
-  mode: debug
+  mode: release
 
 database:
   host: db
@@ -11,7 +11,28 @@ database:
   charset: utf8mb4
   parseTime: true
   loc: Local
+  max_idle_conns: 10
+  max_open_conns: 100
+  conn_max_lifetime: 3600
 
-# 识别模块地址
+# ONNX 模型配置
 model_service:
-  url: "http://inference:5001"
+  url: ""
+  onnx_model_path: "./models/onnx/herb.onnx"
+  classes_path: "./models/onnx/classes.txt"
+
+# JWT 配置
+jwt:
+  secret: "CT79nH9EUrmVsUe"
+  expire_hours: 168
+
+# CORS 配置
+cors:
+  allow_origins:
+    - "http://localhost:3000"
+    - "http://localhost:5173"
+
+# 默认管理员配置
+admin:
+  username: "root"
+  password: ""

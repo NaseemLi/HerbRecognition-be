@@ -28,6 +28,7 @@ coverage.*
 *.trace
 
 .DS_Store
+main
 .AppleDouble
 .LSOverride
 Icon?

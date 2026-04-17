@@ -50,7 +50,9 @@ func (c *DatabaseConfig) BuildDSN() string {
 }
 
 type ModelServiceConfig struct {
-	URL string `mapstructure:"url"`
+	URL            string `mapstructure:"url"`
+	ONNXModelPath  string `mapstructure:"onnx_model_path"`
+	ClassesPath    string `mapstructure:"classes_path"`
 }
 
 // JWTConfig JWT 配置
