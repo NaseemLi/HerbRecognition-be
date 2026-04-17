@@ -51,4 +51,5 @@ volumes:
 
 networks:
   herb-network:
-    driver: bridge
+    name: herb-network
+    external: true
