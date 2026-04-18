@@ -17,6 +17,8 @@ import (
 	"herb-recognition-be/internal/repository"
 	"herb-recognition-be/pkg/onnx"
 	"herb-recognition-be/pkg/upload"
+
+	"gorm.io/gorm"
 )
 
 // RecognizeService 识别服务
@@ -115,9 +117,20 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		herbName = "未知"
 	}
 
-	herbID := uint(topResult.HerbID)
-	if herbID > 0 {
-		record.HerbID = &herbID
+	var herbID uint
+	if herbName != "未知" {
+		var herb model.Herb
+		err := repository.DB.Select("id", "name").Where("name = ?", herbName).First(&herb).Error
+		switch {
+		case err == nil:
+			herbID = herb.ID
+			herbName = herb.Name
+			record.HerbID = &herbID
+		case err == gorm.ErrRecordNotFound:
+			// 保留识别出的 herb_name，herb_id 留空，前端据此决定是否可跳详情。
+		default:
+			return nil, fmt.Errorf("查询药材详情失败：%v", err)
+		}
 	}
 	record.HerbName = herbName
 	record.Confidence = float32(topResult.Confidence)
