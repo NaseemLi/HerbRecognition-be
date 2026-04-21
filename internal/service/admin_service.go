@@ -238,3 +238,78 @@ func (s *AdminHerbService) UpdateUserRole(req *UpdateUserRoleRequest) error {
 	user.Role = req.Role
 	return repository.DB.Save(&user).Error
 }
+
+// DeleteUser 删除用户（管理员不能删除自己和其他管理员）
+func (s *AdminHerbService) DeleteUser(userID uint, adminID uint) error {
+	// 不能删除自己
+	if userID == adminID {
+		return errors.New("不能删除自己")
+	}
+
+	var user model.User
+	if err := repository.DB.First(&user, userID).Error; err != nil {
+		if err == gorm.ErrRecordNotFound {
+			return errors.New("用户不存在")
+		}
+		return errors.New("查询失败")
+	}
+
+	// 不能删除管理员
+	if user.Role == "admin" {
+		return errors.New("不能删除管理员")
+	}
+
+	if err := repository.DB.Delete(&user).Error; err != nil {
+		return errors.New("删除失败")
+	}
+
+	return nil
+}
+
+// BatchDeleteUser 批量删除用户
+func (s *AdminHerbService) BatchDeleteUser(userIDs []uint, adminID uint) error {
+	if len(userIDs) == 0 {
+		return errors.New("请选择要删除的用户")
+	}
+
+	// 去重
+	seen := make(map[uint]struct{})
+	unique := make([]uint, 0, len(userIDs))
+	for _, id := range userIDs {
+		if _, ok := seen[id]; !ok {
+			seen[id] = struct{}{}
+			unique = append(unique, id)
+		}
+	}
+
+	// 检查是否包含自己
+	for _, id := range unique {
+		if id == adminID {
+			return errors.New("不能删除自己")
+		}
+	}
+
+	// 检查是否存在管理员角色
+	var adminCount int64
+	if err := repository.DB.Model(&model.User{}).Where("id IN ? AND role = ?", unique, "admin").Count(&adminCount).Error; err != nil {
+		return errors.New("查询失败")
+	}
+	if adminCount > 0 {
+		return errors.New("不能删除管理员")
+	}
+
+	// 检查目标用户是否全部存在
+	var existingCount int64
+	if err := repository.DB.Model(&model.User{}).Where("id IN ?", unique).Count(&existingCount).Error; err != nil {
+		return errors.New("查询失败")
+	}
+	if existingCount != int64(len(unique)) {
+		return errors.New("部分用户不存在")
+	}
+
+	if err := repository.DB.Where("id IN ?", unique).Delete(&model.User{}).Error; err != nil {
+		return errors.New("删除失败")
+	}
+
+	return nil
+}

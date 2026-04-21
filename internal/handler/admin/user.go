@@ -1,6 +1,7 @@
 package admin
 
 import (
+	"herb-recognition-be/internal/middleware"
 	"herb-recognition-be/internal/service"
 	"herb-recognition-be/pkg/response"
 
@@ -55,4 +56,52 @@ func (h *AdminUserHandler) UpdateUserRole(c *gin.Context) {
 	}
 
 	response.Success(c, "更新成功", nil)
+}
+
+// DeleteUser 删除用户
+func (h *AdminUserHandler) DeleteUser(c *gin.Context) {
+	var req struct {
+		UserID uint `json:"user_id" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 400, "请求参数错误", nil)
+		return
+	}
+
+	adminID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Error(c, 401, "未登录", nil)
+		return
+	}
+
+	if err := h.adminService.DeleteUser(req.UserID, adminID); err != nil {
+		response.Error(c, 400, err.Error(), nil)
+		return
+	}
+
+	response.Success(c, "删除成功", nil)
+}
+
+// BatchDeleteUser 批量删除用户
+func (h *AdminUserHandler) BatchDeleteUser(c *gin.Context) {
+	var req struct {
+		UserIDs []uint `json:"user_ids" binding:"required"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 400, "请求参数错误", nil)
+		return
+	}
+
+	adminID, ok := middleware.GetUserIDFromContext(c)
+	if !ok {
+		response.Error(c, 401, "未登录", nil)
+		return
+	}
+
+	if err := h.adminService.BatchDeleteUser(req.UserIDs, adminID); err != nil {
+		response.Error(c, 400, err.Error(), nil)
+		return
+	}
+
+	response.Success(c, "删除成功", nil)
 }

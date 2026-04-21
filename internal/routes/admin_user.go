@@ -14,7 +14,9 @@ func registerAdminUserRoutes(r *gin.Engine) {
 	admin.Use(middleware.JWTAuth())
 	admin.Use(middleware.RequireRole("admin"))
 	{
-		admin.GET("", adminUserHandler.GetUserList)          // 用户列表
-		admin.POST("/role", adminUserHandler.UpdateUserRole) // 修改用户角色
+		admin.GET("", adminUserHandler.GetUserList)              // 用户列表
+		admin.POST("/role", adminUserHandler.UpdateUserRole)     // 修改用户角色
+		admin.DELETE("", adminUserHandler.DeleteUser)            // 删除用户
+		admin.DELETE("/batch", adminUserHandler.BatchDeleteUser) // 批量删除用户
 	}
 }
