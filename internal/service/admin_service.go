@@ -81,16 +81,18 @@ func (s *AdminHerbService) UpdateHerb(req *UpdateHerbRequest) (*model.Herb, erro
 		return nil, errors.New("药材名称已存在")
 	}
 
-	herb.Name = req.Name
-	herb.Scientific = req.Scientific
-	herb.Alias = req.Alias
-	herb.Category = req.Category
-	herb.Description = req.Description
-	herb.Effects = req.Effects
-	herb.Usage = req.Usage
-	herb.ImageURL = req.ImageUrl
+	updates := map[string]interface{}{
+		"name":        req.Name,
+		"scientific":  req.Scientific,
+		"alias":       req.Alias,
+		"category":    req.Category,
+		"description": req.Description,
+		"effects":     req.Effects,
+		"usage":       req.Usage,
+		"image_url":   req.ImageUrl,
+	}
 
-	if err := repository.DB.Save(&herb).Error; err != nil {
+	if err := repository.DB.Model(&herb).Updates(updates).Error; err != nil {
 		return nil, errors.New("更新失败")
 	}
 

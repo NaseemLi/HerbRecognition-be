@@ -20,6 +20,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    volumes:
+      - uploads-data:/app/uploads
     networks:
       - herb-network
     restart: unless-stopped
@@ -48,6 +50,7 @@ services:
 
 volumes:
   db-data:
+  uploads-data:
 
 networks:
   herb-network:
