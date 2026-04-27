@@ -51,7 +51,7 @@ WORKDIR /app
 RUN apt-get update && \
     apt-get install -y --no-install-recommends ca-certificates tzdata libstdc++6 && \
     rm -rf /var/lib/apt/lists/* && \
-    mkdir -p /app/models/onnx /app/uploads/images /app/uploads/herbs
+    mkdir -p /app/models/onnx /app/uploads/images /app/uploads/herbs /app/uploads/avatars
 
 COPY --from=builder /out/main ./main
 COPY --from=onnxruntime /out/usr/local/lib/libonnxruntime.so /usr/local/lib/libonnxruntime.so

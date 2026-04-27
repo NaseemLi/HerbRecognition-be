@@ -237,8 +237,7 @@ func (s *AdminHerbService) UpdateUserRole(req *UpdateUserRoleRequest) error {
 		return errors.New("用户不存在")
 	}
 
-	user.Role = req.Role
-	return repository.DB.Save(&user).Error
+	return repository.DB.Model(&user).Update("role", req.Role).Error
 }
 
 // DeleteUser 删除用户（管理员不能删除自己和其他管理员）

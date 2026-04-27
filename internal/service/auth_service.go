@@ -133,15 +133,29 @@ func (s *AuthService) UpdateProfile(userID uint, req *UpdateProfileRequest) (*mo
 		user.Username = req.Username
 	}
 
-	// 更新头像
-	if req.Avatar != "" {
-		user.Avatar = req.Avatar
+	updates := map[string]interface{}{
+		"avatar": req.Avatar,
 	}
 
-	// 保存更新
-	if err := repository.DB.Save(&user).Error; err != nil {
-		return nil, errors.New("更新失败")
+	if req.Username != "" && req.Username != user.Username {
+		var existingUser model.User
+		if err := repository.DB.Where("username = ?", req.Username).First(&existingUser).Error; err == nil {
+			return nil, errors.New("用户名已存在")
+		}
+		updates["username"] = req.Username
 	}
+
+	if len(updates) > 0 {
+		if err := repository.DB.Model(&user).Updates(updates).Error; err != nil {
+			return nil, errors.New("更新失败")
+		}
+	}
+
+	// 同步更新的值到返回结构体
+	if req.Username != "" {
+		user.Username = req.Username
+	}
+	user.Avatar = req.Avatar
 
 	return &user, nil
 }
