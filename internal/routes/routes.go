@@ -32,4 +32,10 @@ func InitRoutes(r *gin.Engine) {
 
 	// 管理端用户路由
 	registerAdminUserRoutes(r)
+
+	// 工单路由
+	registerTicketRoutes(r)
+
+	// 管理端工单调路由
+	registerAdminTicketRoutes(r)
 }

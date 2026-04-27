@@ -162,6 +162,96 @@
 
 ---
 
+## 工单模块 `/api/ticket`
+
+### 1. 提交工单
+- **接口**: `POST /api/ticket`
+- **权限**: 需登录
+- **请求参数**: `application/json`
+```json
+{
+  "title": "string (必填，1-128 字符)",
+  "content": "string (必填，问题描述)",
+  "image_url": "string (可选，图片 URL)"
+}
+```
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "提交成功",
+  "data": {
+    "id": 1,
+    "user_id": 2,
+    "title": "识别结果不准确",
+    "content": "上传的图片被识别为鸡内金，但实际是其他药材",
+    "image_url": "/uploads/images/xxx.jpg",
+    "status": "pending",
+    "admin_reply": "",
+    "replied_at": null,
+    "created_at": "2026-04-27T10:00:00Z"
+  }
+}
+```
+
+### 2. 获取我的工单列表
+- **接口**: `GET /api/ticket`
+- **权限**: 需登录
+- **Query 参数**:
+  - `page`: 页码（默认 1）
+  - `page_size`: 每页数量（默认 10，最大 50）
+  - `status`: 状态筛选（`pending`、`processing`、`resolved`，可选）
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "查询成功",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "user_id": 2,
+        "title": "识别结果不准确",
+        "content": "上传的图片被识别为鸡内金，但实际是其他药材",
+        "image_url": "/uploads/images/xxx.jpg",
+        "status": "resolved",
+        "admin_reply": "感谢您的反馈，已修正模型参数",
+        "replied_at": "2026-04-27T12:00:00Z",
+        "created_at": "2026-04-27T10:00:00Z"
+      }
+    ],
+    "total": 5,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+### 3. 获取工单详情
+- **接口**: `GET /api/ticket/:id`
+- **权限**: 需登录（只能查看自己的工单）
+- **路径参数**: `id` - 工单 ID
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "查询成功",
+  "data": {
+    "id": 1,
+    "user_id": 2,
+    "title": "识别结果不准确",
+    "content": "上传的图片被识别为鸡内金，但实际是其他药材",
+    "image_url": "/uploads/images/xxx.jpg",
+    "status": "resolved",
+    "admin_reply": "感谢您的反馈，已修正模型参数",
+    "replied_at": "2026-04-27T12:00:00Z",
+    "created_at": "2026-04-27T10:00:00Z"
+  }
+}
+```
+
+---
+
 ## 识别模块 `/api/recognize`
 
 ### 1. 上传图片并识别
@@ -509,6 +599,103 @@
   - `不能删除自己` — 列表中包含管理员自己的 ID
   - `不能删除管理员` — 列表中包含其他管理员账号
   - `部分用户不存在` — 列表中有不存在的用户 ID
+
+---
+
+### 工单管理
+
+#### 1. 获取工单列表
+- **接口**: `GET /api/admin/ticket`
+- **Query 参数**:
+  - `status`: 状态筛选（`pending`、`processing`、`resolved`，可选）
+  - `page`: 页码（默认 1）
+  - `page_size`: 每页数量（默认 10，最大 50）
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "查询成功",
+  "data": {
+    "list": [
+      {
+        "id": 1,
+        "user_id": 2,
+        "title": "识别结果不准确",
+        "content": "上传的图片被识别为鸡内金，但实际是其他药材",
+        "image_url": "/uploads/images/xxx.jpg",
+        "status": "pending",
+        "admin_reply": "",
+        "replied_at": null,
+        "created_at": "2026-04-27T10:00:00Z",
+        "username": "testuser"
+      }
+    ],
+    "total": 10,
+    "page": 1,
+    "page_size": 10
+  }
+}
+```
+
+#### 2. 获取工单详情
+- **接口**: `GET /api/admin/ticket/:id`
+- **路径参数**: `id` - 工单 ID
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "查询成功",
+  "data": {
+    "id": 1,
+    "user_id": 2,
+    "title": "识别结果不准确",
+    "content": "上传的图片被识别为鸡内金，但实际是其他药材",
+    "image_url": "/uploads/images/xxx.jpg",
+    "status": "pending",
+    "admin_reply": "",
+    "replied_at": null,
+    "created_at": "2026-04-27T10:00:00Z",
+    "username": "testuser"
+  }
+}
+```
+
+#### 3. 回复工单
+- **接口**: `POST /api/admin/ticket/:id/reply`
+- **路径参数**: `id` - 工单 ID
+- **请求参数**: `application/json`
+```json
+{
+  "reply": "string (必填，回复内容)"
+}
+```
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "回复成功",
+  "data": null
+}
+```
+- **说明**: 回复后工单状态自动变为 `resolved`
+
+#### 4. 修改工单状态
+- **接口**: `POST /api/admin/ticket/:id/status`
+- **路径参数**: `id` - 工单 ID
+- **请求参数**: `application/json`
+```json
+{
+  "status": "string (必填，可选值: pending, processing, resolved)"
+}
+```
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "更新成功",
+  "data": null
+}
+```
 
 ---
 
