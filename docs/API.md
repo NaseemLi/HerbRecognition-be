@@ -162,6 +162,29 @@
 
 ---
 
+## 通用上传模块 `/api/upload`
+
+### 1. 上传通用图片
+- **接口**: `POST /api/upload/image`
+- **权限**: 需登录
+- **请求**: `multipart/form-data`
+  - `image`: 图片文件（必填）
+  - 支持格式：JPG, PNG, GIF, WEBP
+  - 最大大小：5MB
+- **响应**:
+```json
+{
+  "code": 200,
+  "message": "上传成功",
+  "data": {
+    "image_url": "/uploads/common/xxx.jpg"
+  }
+}
+```
+- **说明**: 通用图片上传接口，可用于工单图片、富文本编辑器插图等场景。上传的文件保存至 `uploads/common/` 目录。
+
+---
+
 ## 工单模块 `/api/ticket`
 
 ### 1. 提交工单

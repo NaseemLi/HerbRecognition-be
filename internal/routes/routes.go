@@ -38,4 +38,7 @@ func InitRoutes(r *gin.Engine) {
 
 	// 管理端工单调路由
 	registerAdminTicketRoutes(r)
+
+	// 通用上传路由
+	registerUploadRoutes(r)
 }
