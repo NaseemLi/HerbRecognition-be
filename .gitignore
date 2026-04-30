@@ -82,6 +82,7 @@ services/inference-service/env/
 models/*.pth
 models/*.pt
 models/*.onnx
+models/*.onnx.data
 models/*.pb
 !models/.gitkeep
 DOCKER.md

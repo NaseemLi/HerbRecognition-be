@@ -56,6 +56,7 @@ RUN apt-get update && \
 COPY --from=builder /out/main ./main
 COPY --from=onnxruntime /out/usr/local/lib/libonnxruntime.so /usr/local/lib/libonnxruntime.so
 COPY models/onnx/herb.onnx ./models/onnx/herb.onnx
+COPY models/onnx/herb_resnet18_eca_mff.onnx.data ./models/onnx/herb_resnet18_eca_mff.onnx.data
 COPY models/onnx/classes.txt ./models/onnx/classes.txt
 COPY configs/config.docker.yaml ./configs/config.yaml
 
