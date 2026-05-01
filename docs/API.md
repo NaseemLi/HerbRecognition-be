@@ -299,7 +299,52 @@
 }
 ```
 
-### 2. 获取识别历史
+### 2. Base64 图片识别
+- **接口**: `POST /api/recognize/base64`
+- **权限**: 需登录
+- **请求参数**: `application/json`
+```json
+{
+  "image_base64": "string (必填, data:image/jpeg;base64,/9j/4AAQ...)",
+  "save_history": "boolean (可选, 默认 true)"
+}
+```
+- **响应** (`save_history=true` 或不传):
+```json
+{
+  "code": 200,
+  "message": "识别成功",
+  "data": {
+    "record_id": 1,
+    "herb_id": 6,
+    "herb_name": "鸡内金",
+    "confidence": 98.5,
+    "image_url": "/uploads/images/xxx.jpg"
+  }
+}
+```
+- **响应** (`save_history=false`):
+```json
+{
+  "code": 200,
+  "message": "识别成功",
+  "data": {
+    "record_id": null,
+    "herb_id": 6,
+    "herb_name": "鸡内金",
+    "confidence": 98.5,
+    "image_url": ""
+  }
+}
+```
+- **说明**:
+  - `save_history=true`（默认）: 保存图片到磁盘并写入历史记录表，返回完整的识别结果。
+  - `save_history=false`: 仅在内存中做 Base64 解码和 ONNX 识别，不保存图片到磁盘，也不写入历史记录表，`record_id` 为 `null`，`image_url` 为空字符串。
+  - 支持格式：JPG, PNG, GIF, WEBP
+  - 最大大小：5MB
+  - **后端兜底去重**: 即使 `save_history=true`，后端也会检查该用户最近 30 秒内是否已保存过相同 `herb_id` 的记录。如果已保存，直接返回已有记录，不会重复创建。这一机制防止前端因手晃动导致药材识别结果来回跳动而产生重复记录。
+
+### 3. 获取识别历史
 - **接口**: `GET /api/recognize/history`
 - **权限**: 需登录
 - **Query 参数**:
@@ -328,7 +373,7 @@
 }
 ```
 
-### 3. 删除识别记录
+### 4. 删除识别记录
 - **接口**: `DELETE /api/recognize/history`
 - **权限**: 需登录
 - **请求参数**: `application/json`

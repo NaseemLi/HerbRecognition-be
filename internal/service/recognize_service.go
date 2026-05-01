@@ -1,20 +1,20 @@
 package service
 
 import (
-	_ "golang.org/x/image/webp"
-	_ "image/gif"
-	_ "image/jpeg"
-	_ "image/png"
-
+	"bytes"
 	"encoding/base64"
 	"errors"
 	"fmt"
 	"image"
+	_ "image/gif"
+	_ "image/jpeg"
+	_ "image/png"
 	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"herb-recognition-be/internal/model"
 	"herb-recognition-be/internal/repository"
@@ -22,7 +22,7 @@ import (
 	"herb-recognition-be/pkg/upload"
 
 	"github.com/google/uuid"
-	"gorm.io/gorm"
+	_ "golang.org/x/image/webp"
 )
 
 // RecognizeService 识别服务
@@ -43,11 +43,45 @@ type RecognizeRequest struct {
 
 // RecognizeResponse 识别响应
 type RecognizeResponse struct {
-	RecordID   uint    `json:"record_id"`
+	RecordID   *uint   `json:"record_id"`
 	HerbID     uint    `json:"herb_id"`
 	HerbName   string  `json:"herb_name"`
 	Confidence float32 `json:"confidence"`
 	ImageURL   string  `json:"image_url"`
+}
+
+// recognizeImage 对 image.Image 执行 ONNX 推理和药材查询
+// 返回: (ONNX识别输出, 药材名称, 药材ID, 错误)
+func recognizeImage(img image.Image) (*onnx.RecognitionOutput, string, uint, error) {
+	if !onnx.IsInitialized() {
+		return nil, "", 0, errors.New("识别模型未初始化，请检查模型文件")
+	}
+
+	result, err := onnx.Predict(img)
+	if err != nil {
+		return nil, "", 0, fmt.Errorf("识别失败：%v", err)
+	}
+
+	topResult := result.TopResult
+	herbName := strings.TrimSpace(topResult.HerbName)
+	if herbName == "" {
+		herbName = "未知"
+	}
+
+	var herbID uint
+	if herbName != "未知" {
+		var herbs []model.Herb
+		err := repository.DB.Select("id", "name").Where("name = ?", herbName).Limit(1).Find(&herbs).Error
+		if err != nil {
+			return nil, "", 0, fmt.Errorf("查询药材详情失败：%v", err)
+		}
+		if len(herbs) > 0 {
+			herbID = herbs[0].ID
+			herbName = herbs[0].Name
+		}
+	}
+
+	return result, herbName, herbID, nil
 }
 
 // Recognize 识别图片（使用 ONNX 模型）
@@ -58,19 +92,6 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		Status:   1,
 	}
 
-	// 检查 ONNX 预测器是否已初始化
-	if !onnx.IsInitialized() {
-		record.Status = 0
-		record.ErrMsg = "识别模型未初始化"
-		record.HerbName = "未知"
-		record.Confidence = 0
-
-		if err := repository.DB.Create(&record).Error; err != nil {
-			return nil, fmt.Errorf("保存识别记录失败：%v", err)
-		}
-		return nil, errors.New("识别模型未初始化，请检查模型文件")
-	}
-
 	// 加载图像
 	filePath := "." + imageURL
 	imgFile, err := os.Open(filePath)
@@ -79,7 +100,6 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		record.ErrMsg = "读取图片失败"
 		record.HerbName = "未知"
 		record.Confidence = 0
-
 		if err := repository.DB.Create(&record).Error; err != nil {
 			return nil, fmt.Errorf("保存识别记录失败：%v", err)
 		}
@@ -94,60 +114,40 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		record.ErrMsg = "解码图片失败"
 		record.HerbName = "未知"
 		record.Confidence = 0
-
 		if err := repository.DB.Create(&record).Error; err != nil {
 			return nil, fmt.Errorf("保存识别记录失败：%v", err)
 		}
 		return nil, errors.New("解码图片失败")
 	}
 
-	// 执行 ONNX 推理
-	result, err := onnx.Predict(img)
+	// 执行识别
+	result, herbName, herbID, err := recognizeImage(img)
 	if err != nil {
 		record.Status = 0
-		record.ErrMsg = fmt.Sprintf("识别失败：%v", err)
+		record.ErrMsg = err.Error()
 		record.HerbName = "未知"
 		record.Confidence = 0
-
 		if err := repository.DB.Create(&record).Error; err != nil {
 			return nil, fmt.Errorf("保存识别记录失败：%v", err)
 		}
-		return nil, errors.New(record.ErrMsg)
+		return nil, err
 	}
 
-	topResult := result.TopResult
-	herbName := strings.TrimSpace(topResult.HerbName)
-	if herbName == "" {
-		herbName = "未知"
-	}
-
-	var herbID uint
-	if herbName != "未知" {
-		var herb model.Herb
-		err := repository.DB.Select("id", "name").Where("name = ?", herbName).First(&herb).Error
-		switch {
-		case err == nil:
-			herbID = herb.ID
-			herbName = herb.Name
-			record.HerbID = &herbID
-		case err == gorm.ErrRecordNotFound:
-			// 保留识别出的 herb_name，herb_id 留空，前端据此决定是否可跳详情。
-		default:
-			return nil, fmt.Errorf("查询药材详情失败：%v", err)
-		}
-	}
 	record.HerbName = herbName
-	record.Confidence = float32(topResult.Confidence)
+	record.Confidence = float32(result.TopResult.Confidence)
+	if herbID > 0 {
+		record.HerbID = &herbID
+	}
 
 	if err := repository.DB.Create(&record).Error; err != nil {
 		return nil, fmt.Errorf("保存识别记录失败：%v", err)
 	}
 
 	return &RecognizeResponse{
-		RecordID:   record.ID,
+		RecordID:   &record.ID,
 		HerbID:     herbID,
 		HerbName:   herbName,
-		Confidence: float32(topResult.Confidence),
+		Confidence: float32(result.TopResult.Confidence),
 		ImageURL:   imageURL,
 	}, nil
 }
@@ -155,10 +155,11 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 // Base64RecognizeRequest base64 识别请求
 type Base64RecognizeRequest struct {
 	ImageBase64 string `json:"image_base64" binding:"required"`
+	SaveHistory *bool  `json:"save_history,omitempty"`
 }
 
 // RecognizeFromBase64 从 base64 图片数据进行识别
-func (s *RecognizeService) RecognizeFromBase64(userID uint, base64Str string) (*RecognizeResponse, error) {
+func (s *RecognizeService) RecognizeFromBase64(userID uint, base64Str string, saveHistory bool) (*RecognizeResponse, error) {
 	// 解析 base64 前缀，提取纯数据部分
 	base64Data := base64Str
 	if idx := strings.Index(base64Str, ","); idx != -1 {
@@ -192,21 +193,92 @@ func (s *RecognizeService) RecognizeFromBase64(userID uint, base64Str string) (*
 		return nil, errors.New("不支持的图片格式，仅支持 jpg、png、gif、webp")
 	}
 
-	// 保存解码后的图片到上传目录
-	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
-	uploadDir := "./uploads/images"
-	if err := os.MkdirAll(uploadDir, 0755); err != nil {
-		return nil, errors.New("创建上传目录失败")
-	}
-	filePath := filepath.Join(uploadDir, filename)
-	if err := os.WriteFile(filePath, data, 0644); err != nil {
-		return nil, errors.New("保存图片失败")
+	if saveHistory {
+		// 先解码图片做识别，获取 herb_id 用于去重判断
+		img, _, err := image.Decode(bytes.NewReader(data))
+		if err != nil {
+			return nil, errors.New("解码图片失败")
+		}
+
+		result, herbName, herbID, err := recognizeImage(img)
+		if err != nil {
+			return nil, err
+		}
+
+		// 去重：查询最近 30 秒内是否已保存过相同 herb_id 的记录
+		if herbID > 0 {
+			var recentRecords []model.RecognitionRecord
+			if err := repository.DB.Where("user_id = ? AND herb_id = ? AND created_at >= ?",
+				userID, herbID, time.Now().Add(-30*time.Second)).
+				Order("created_at DESC").
+				Limit(1).
+				Find(&recentRecords).Error; err != nil {
+				return nil, fmt.Errorf("查询历史记录失败：%v", err)
+			}
+			if len(recentRecords) > 0 {
+				// 命中去重：直接返回已有记录，不保存新图片
+				return &RecognizeResponse{
+					RecordID:   &recentRecords[0].ID,
+					HerbID:     herbID,
+					HerbName:   herbName,
+					Confidence: float32(result.TopResult.Confidence),
+					ImageURL:   recentRecords[0].ImageURL,
+				}, nil
+			}
+		}
+
+		// 未命中去重：保存图片并创建新记录
+		filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+		uploadDir := "./uploads/images"
+		if err := os.MkdirAll(uploadDir, 0755); err != nil {
+			return nil, errors.New("创建上传目录失败")
+		}
+		filePath := filepath.Join(uploadDir, filename)
+		if err := os.WriteFile(filePath, data, 0644); err != nil {
+			return nil, errors.New("保存图片失败")
+		}
+
+		imageURL := "/uploads/images/" + filename
+
+		record := model.RecognitionRecord{
+			UserID:     userID,
+			ImageURL:   imageURL,
+			Status:     1,
+			HerbID:     &herbID,
+			HerbName:   herbName,
+			Confidence: float32(result.TopResult.Confidence),
+		}
+		if err := repository.DB.Create(&record).Error; err != nil {
+			return nil, fmt.Errorf("保存识别记录失败：%v", err)
+		}
+
+		return &RecognizeResponse{
+			RecordID:   &record.ID,
+			HerbID:     herbID,
+			HerbName:   herbName,
+			Confidence: float32(result.TopResult.Confidence),
+			ImageURL:   imageURL,
+		}, nil
 	}
 
-	imageURL := "/uploads/images/" + filename
+	// saveHistory == false: 内存中解码和识别，不保存图片和记录
+	img, _, err := image.Decode(bytes.NewReader(data))
+	if err != nil {
+		return nil, errors.New("解码图片失败")
+	}
 
-	// 复用现有的识别逻辑
-	return s.Recognize(userID, imageURL)
+	result, herbName, herbID, err := recognizeImage(img)
+	if err != nil {
+		return nil, err
+	}
+
+	return &RecognizeResponse{
+		RecordID:   nil,
+		HerbID:     herbID,
+		HerbName:   herbName,
+		Confidence: float32(result.TopResult.Confidence),
+		ImageURL:   "",
+	}, nil
 }
 
 // GetHistory 获取用户识别历史

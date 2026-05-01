@@ -66,7 +66,12 @@ func (h *RecognizeHandler) Base64Recognize(c *gin.Context) {
 		return
 	}
 
-	result, err := h.recognizeService.RecognizeFromBase64(userID, req.ImageBase64)
+	saveHistory := true
+	if req.SaveHistory != nil {
+		saveHistory = *req.SaveHistory
+	}
+
+	result, err := h.recognizeService.RecognizeFromBase64(userID, req.ImageBase64, saveHistory)
 	if err != nil {
 		response.Error(c, 500, err.Error(), nil)
 		return
