@@ -86,3 +86,4 @@ models/*.onnx.data
 models/*.pb
 !models/.gitkeep
 DOCKER.md
+.claude
