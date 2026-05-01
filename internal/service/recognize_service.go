@@ -6,11 +6,14 @@ import (
 	_ "image/jpeg"
 	_ "image/png"
 
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"image"
 	"mime/multipart"
+	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"herb-recognition-be/internal/model"
@@ -18,6 +21,7 @@ import (
 	"herb-recognition-be/pkg/onnx"
 	"herb-recognition-be/pkg/upload"
 
+	"github.com/google/uuid"
 	"gorm.io/gorm"
 )
 
@@ -146,6 +150,63 @@ func (s *RecognizeService) Recognize(userID uint, imageURL string) (*RecognizeRe
 		Confidence: float32(topResult.Confidence),
 		ImageURL:   imageURL,
 	}, nil
+}
+
+// Base64RecognizeRequest base64 识别请求
+type Base64RecognizeRequest struct {
+	ImageBase64 string `json:"image_base64" binding:"required"`
+}
+
+// RecognizeFromBase64 从 base64 图片数据进行识别
+func (s *RecognizeService) RecognizeFromBase64(userID uint, base64Str string) (*RecognizeResponse, error) {
+	// 解析 base64 前缀，提取纯数据部分
+	base64Data := base64Str
+	if idx := strings.Index(base64Str, ","); idx != -1 {
+		base64Data = base64Str[idx+1:]
+	}
+
+	// base64 解码
+	data, err := base64.StdEncoding.DecodeString(base64Data)
+	if err != nil {
+		return nil, errors.New("图片数据解码失败")
+	}
+
+	// 校验图片大小（最大 5MB）
+	if len(data) > 5*1024*1024 {
+		return nil, errors.New("图片大小不能超过 5MB")
+	}
+
+	// 检测真实 MIME 类型
+	contentType := http.DetectContentType(data)
+	var ext string
+	switch contentType {
+	case "image/jpeg":
+		ext = ".jpg"
+	case "image/png":
+		ext = ".png"
+	case "image/gif":
+		ext = ".gif"
+	case "image/webp":
+		ext = ".webp"
+	default:
+		return nil, errors.New("不支持的图片格式，仅支持 jpg、png、gif、webp")
+	}
+
+	// 保存解码后的图片到上传目录
+	filename := fmt.Sprintf("%s%s", uuid.New().String(), ext)
+	uploadDir := "./uploads/images"
+	if err := os.MkdirAll(uploadDir, 0755); err != nil {
+		return nil, errors.New("创建上传目录失败")
+	}
+	filePath := filepath.Join(uploadDir, filename)
+	if err := os.WriteFile(filePath, data, 0644); err != nil {
+		return nil, errors.New("保存图片失败")
+	}
+
+	imageURL := "/uploads/images/" + filename
+
+	// 复用现有的识别逻辑
+	return s.Recognize(userID, imageURL)
 }
 
 // GetHistory 获取用户识别历史

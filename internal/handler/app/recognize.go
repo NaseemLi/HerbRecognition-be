@@ -52,6 +52,29 @@ func (h *RecognizeHandler) UploadAndRecognize(c *gin.Context) {
 	response.Success(c, "识别成功", result)
 }
 
+// Base64Recognize 接收 base64 图片数据进行识别
+func (h *RecognizeHandler) Base64Recognize(c *gin.Context) {
+	userID, exists := middleware.GetUserIDFromContext(c)
+	if !exists {
+		response.Error(c, 401, "未登录", nil)
+		return
+	}
+
+	var req service.Base64RecognizeRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		response.Error(c, 400, "请求参数错误：请提供 image_base64 字段", nil)
+		return
+	}
+
+	result, err := h.recognizeService.RecognizeFromBase64(userID, req.ImageBase64)
+	if err != nil {
+		response.Error(c, 500, err.Error(), nil)
+		return
+	}
+
+	response.Success(c, "识别成功", result)
+}
+
 // GetHistory 获取识别历史
 func (h *RecognizeHandler) GetHistory(c *gin.Context) {
 	userID, exists := middleware.GetUserIDFromContext(c)

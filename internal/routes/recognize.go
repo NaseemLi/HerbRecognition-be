@@ -14,6 +14,7 @@ func registerRecognizeRoutes(r *gin.Engine) {
 	recognize.Use(middleware.JWTAuth())
 	{
 		recognize.POST("/upload", recognizeHandler.UploadAndRecognize)
+		recognize.POST("/base64", recognizeHandler.Base64Recognize)
 		recognize.GET("/history", recognizeHandler.GetHistory)
 		recognize.DELETE("/history", recognizeHandler.DeleteHistory)
 	}
